@@ -52,7 +52,7 @@ typedef struct  OSPFHELLO
 		unsigned int RouterDeadInterval;
 		unsigned int DesignatedRouter;
 		unsigned int BackupDesignatedRouter;
-		//unsigned int Neighbor;
+		unsigned int Neighbor;
 	}  __attribute__((packed)) ospfhello;
 
 extern unsigned char *buffer;

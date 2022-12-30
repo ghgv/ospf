@@ -1,3 +1,4 @@
+
 /*---------- The Linux Channel ------------*/
 
 #include <stdlib.h>
@@ -90,7 +91,10 @@ unsigned short in_cksum(u16 *ptr, int nbytes)
   u16 oddbyte;
   register u16 answer;
 
-  while(nbytes>1) { sum += *ptr++; nbytes -= 2; }
+  while(nbytes>1) 
+  	{ 
+  		sum += *ptr++; nbytes -= 2; 
+  	}
   if(nbytes == 1) { oddbyte = 0; *((unsigned char *) &oddbyte) = *(unsigned char *)ptr; sum += oddbyte; }
   sum  = (sum >> 16)+(sum & 0xffff); sum+=(sum >> 16); answer = ~sum;
   return(answer);
@@ -116,7 +120,7 @@ int independentThread()
 		ip.version    = 4;
 	   	ip.ihl        = IPHSIZE >> 2;
 		ip.tos        = 0;
-		ip.tot_len    = htons(44+IPHSIZE);
+		ip.tot_len    = htons(48+IPHSIZE);
 		ip.id         = htons(rand()%65535);
 		ip.frag_off   = 0;
 		ip.ttl        = 1;//htons(1);
@@ -127,7 +131,7 @@ int independentThread()
 		BYTE buf[300];
 		memcpy(buf, l2, ETHSIZE);
 		memcpy(buf+ETHSIZE, &ip, IPHSIZE);
-		memcpy(buf+ETHSIZE+IPHSIZE, &ospf_header.header, 44); 
+		memcpy(buf+ETHSIZE+IPHSIZE, &ospf_header.header, 48); 
 		
 		write(sock_fd, (BYTE *)buf, ETHSIZE+ntohs(ip.tot_len));
 
@@ -135,110 +139,6 @@ int independentThread()
 		   
 }
 
-int ReceiverOSPF()
-{
-	int sock_r;
-	int buflen=0;
-	int SRC_PORT=0x59;
-	struct ifreq ifr;
-	sock_r=socket(AF_PACKET,SOCK_RAW,htons(ETH_P_ALL));
-	//sock_r=socket(AF_INET,SOCK_RAW,0x59);
-	
-  	char interfaceName[IFNAMSIZ];
-  	for (int j =1;j<5;j++)
-  	{
-		char *interface = if_indextoname(j, (char *)&interfaceName); /* retrieve the name of interface 1 */
-		if (interface == NULL)
-		{
-	     		printf("if_indextoname() failed with errno =  %d %s \n",   errno,strerror(errno));
-	     		return;
-	  	}
-	  	printf("%s\n",interfaceName);
-  	}
-	
-	memset(&ifr, 0, sizeof(ifr));
-	printf("%s\n",argumento1);
-	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "ens3f1");
-	printf("---- %s\n",ifr.ifr_name);
-	if (( setsockopt(sock_r, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr))) < 0)
-	{
-	    perror("Server-setsockopt() error for SO_BINDTODEVICE");
-	    printf("%s\n", strerror(errno));
-	    close(sock_r);
-	    exit(-1);
-	}
-	
-	
-	memset(&ifr, 0, sizeof(struct ifreq));
-	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "ens3f1");
-	ioctl(sock_r, SIOCGIFINDEX, &ifr);
-	setsockopt(sock_r, SOL_SOCKET, SO_BINDTODEVICE,  (void*)&ifr, sizeof(struct ifreq));
-	
-	if(sock_r<0)
-	{
-		printf("error in raw incoming socket\n");
-	return -1;
-	}
-	
-	
-	memset(buffer,0,65536);
-	struct sockaddr saddr;
-	
-	//addrlen = sizeof(from); /* must be initialized */
-	
-	memset(&saddr, 0, sizeof(saddr));         /* Zero out structure */
-	int saddr_len = sizeof (saddr);
-	//Receive a network packet and copy in to buffer
-	struct sockaddr_ll   sll;
-	int32_t ret;
-	memset(&sll, 0x0, sizeof(struct sockaddr_ll));
-	sll.sll_family    = AF_PACKET;
-	sll.sll_ifindex   = 5;//ifindex;
-	sll.sll_protocol  = htons(ETH_P_ALL);
-	
-	int rc = bind(sock_r, (struct sockaddr *)&sll, sizeof(sll));
-	while(1)
-	{
-		
-		buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
-//		byflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
-		if(buflen<0)
-		{
-			printf("error in reading recvfrom function\n");
-			//return -1;
-		}
-	
-	struct ethhdr *eth = (struct ethhdr *)(buffer);
-	if(DEBUG==TRUE)
-	{
-		printf("\nEthernet Header\n");
-		printf("\t|-Source Address : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_source[0],eth->h_source[1],eth->h_source[2],eth->h_source[3],eth->h_source[4],eth->h_source[5]);
-		printf("\t|-Destination Address : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_dest[0],eth->h_dest[1],eth->h_dest[2],eth->h_dest[3],eth->h_dest[4],eth->h_dest[5]);
-		printf("\t|-Protocol : %x\n",ntohs(eth->h_proto));	
-		
-		struct sockaddr_in source,dest;
-		struct iphdr *ip = (struct iphdr*)(buffer + sizeof(struct ethhdr));
-		memset(&source, 0, sizeof(source));
-		source.sin_addr.s_addr = ip->saddr;
-		memset(&dest, 0, sizeof(dest));
-		dest.sin_addr.s_addr = ip->daddr;
-	 	printf("\t|-Version : %d\n",(unsigned int)ip->version);
-	 	printf("\t|-Internet Header Length : %d DWORDS or %d Bytes\n",(unsigned int)ip->ihl,((unsigned int)(ip->ihl))*4);
-		printf("\t|-Type Of Service : %d\n",(unsigned int)ip->tos);
-	 	printf("\t|-Total Length : %d Bytes\n",ntohs(ip->tot_len));
-	 	printf("\t|-Identification : %d\n",ntohs(ip->id));
-	 	printf("\t|-Time To Live : %d\n",(unsigned int)ip->ttl);
-	 	printf("\t|-Protocol : %d\n",(unsigned int)ip->protocol);
-	 	printf("\t|-Header Checksum : %d\n",ntohs(ip->check));
-	 	printf("\t|-Source IP : %s\n", inet_ntoa(source.sin_addr));
-	 	printf("\t|-Destination IP : %s\n",inet_ntoa(dest.sin_addr));
-	 	//if (strcmp(inet_ntoa(source.sin_addr),"192.168.0.1")==0)
-	 	// 	return 0;
-	 	sprintf(input, " \n");
-	 	
- 	}
-	}
-}
  
 void threadCaller() 
 {
@@ -247,18 +147,12 @@ void threadCaller()
     t.detach();
 }
 
-void startRx() 
-{
-
-    std::thread t(ReceiverOSPF);
-    t.detach();
-}
 
 int main(int argc, char ** argv)
 {
 	startCLI();
-	//threadCaller();
-	//startRx();
+	threadCaller();
+	
 	argumento1=argv[1]; // IP address
 	argumento2=argv[2]; // Interface
 	while(1){}
