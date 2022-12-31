@@ -68,6 +68,7 @@ class ospf_f{
 		static int ReceiverOSPF2();
 		void hello();
 		int *encode();
+		int decode();
 		ospf_f();
 };
 

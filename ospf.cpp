@@ -26,13 +26,21 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <vector> 
+
+using namespace std;
 
 #include "ospf.h"
+#include "neighbors.h"
 
 extern bool DEBUG;
 extern char input[50];
 extern char *argumento1;
 extern char *argumento2;//Interface name
+vector<neighbor_t> Neighbor;
+neighbor_t NB;
+
+
 
 struct ifreq ifr;
 //struct sockaddr_in source,dest;
@@ -52,8 +60,8 @@ ospf_f::ospf_f(){
 	hello();
 	checksum((ospfheader )header, (ospfhello) hellof);
 	//printf("CS  %04X\n", header.checksum);
-	std::thread t(ospf_f::ReceiverOSPF2);
-	t.detach();
+	//std::thread t(ospf_f::ReceiverOSPF2);
+	//t.detach();
 	
 }
 
@@ -182,11 +190,12 @@ static int ospf_f::ReceiverOSPF2()
 	
 	struct ethhdr *eth = (struct ethhdr *)(buffer);
 	if(DEBUG==true)
-	{
+		{
 		printf("\nEthernet Header[%i]\n",buflen);
 		printf("\t|-Source Address : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_source[0],eth->h_source[1],eth->h_source[2],eth->h_source[3],eth->h_source[4],eth->h_source[5]);
 		printf("\t|-Destination Address : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",eth->h_dest[0],eth->h_dest[1],eth->h_dest[2],eth->h_dest[3],eth->h_dest[4],eth->h_dest[5]);
 		printf("\t|-Protocol : %d\n",(eth->h_proto));	//fix me
+		}
 		struct sockaddr_in source,dest;
 		struct iphdr *ip = (struct iphdr*)(buffer + sizeof(struct ethhdr));
 		
@@ -194,6 +203,8 @@ static int ospf_f::ReceiverOSPF2()
 		source.sin_addr.s_addr = ip->saddr;
 		memset(&dest, 0, sizeof(dest));
 		dest.sin_addr.s_addr = ip->daddr;
+	if(DEBUG==true)
+		{
 	 	printf("\t|-Version : %d\n",(unsigned int)ip->version);
 	 	printf("\t|-Internet Header Length : %d DWORDS or %d Bytes\n",(unsigned int)ip->ihl,((unsigned int)(ip->ihl))*4);
 		printf("\t|-Type Of Service : %d\n",(unsigned int)ip->tos);
@@ -204,25 +215,25 @@ static int ospf_f::ReceiverOSPF2()
 	 	printf("\t|-Header Checksum : %d\n",ntohs(ip->check));
 	 	printf("\t|-Source IP : %s\n", inet_ntoa(source.sin_addr));
 	 	printf("\t|-Destination IP : %s\n",inet_ntoa(dest.sin_addr));
-	 	//if (strcmp(inet_ntoa(source.sin_addr),"192.168.0.1")==0)
-	 	// 	return 0;
-	 	sprintf(input, " \n");
+	 	}
 	 	if(((unsigned int)ip->protocol)==89)
 	 		{
 		 	ospfheader *ospff = (ospfheader*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr));
 		 	struct sockaddr_in routerid;
 		 	memset(&routerid, 0, sizeof(routerid));
 		 	routerid.sin_addr.s_addr = ospff->router_id;
-		 	printf("OSPF header: \n");
-		 	printf("\t|-Version : %i\n",(unsigned char)ospff->version);
-		 	printf("\t|-Type : %i \n",(unsigned char)ospff->type);
-			printf("\t|-Length : %i\n",(unsigned short)ntohs(ospff->packetlenght));
-		 	printf("\t|-Router ID : %s \n",inet_ntoa(routerid.sin_addr));//Waring for DR_ID
-		 	printf("\t|-Area ID: %i\n",ntohs(ospff->area_id));
-		 	printf("\t|-Checksum : %i\n",(unsigned short)ospff->checksum);
-		 	printf("\t|-Autype : %i\n",(unsigned short)ospff->Autype);
-		 	printf("\t|-Auth  : %l\n", (unsigned long)ospff->auth1);
-			
+		 	if(DEBUG==true)
+				{
+		 		printf("OSPF header: \n");
+			 	printf("\t|-Version : %i\n",(unsigned char)ospff->version);
+			 	printf("\t|-Type : %i \n",(unsigned char)ospff->type);
+				printf("\t|-Length : %i\n",(unsigned short)ntohs(ospff->packetlenght));
+			 	printf("\t|-Router ID : %s \n",inet_ntoa(routerid.sin_addr));//Waring for DR_ID
+			 	printf("\t|-Area ID: %i\n",ntohs(ospff->area_id));
+			 	printf("\t|-Checksum : %i\n",(unsigned short)ospff->checksum);
+			 	printf("\t|-Autype : %i\n",(unsigned short)ospff->Autype);
+			 	printf("\t|-Auth  : %l\n", (unsigned long)ospff->auth1);
+				}			
 	 		ospfhello *ospfh = (ospfhello*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
 	 		struct sockaddr_in mask, designated, backupdesignated; //network mask
 	 		memset(&mask, 0, sizeof(mask));
@@ -231,46 +242,69 @@ static int ospf_f::ReceiverOSPF2()
 			designated.sin_addr.s_addr = ospfh->DesignatedRouter;
 			memset(&backupdesignated, 0, sizeof(backupdesignated));
 			backupdesignated.sin_addr.s_addr = ospfh->BackupDesignatedRouter;
-			printf("\t|-Type : %i \n",(unsigned char)ospff->type);
-			printf("\t|-Network Mask : %s\n",inet_ntoa(mask.sin_addr));
-			printf("\t|-Hello interval : %i\n",(unsigned short)ntohs(ospfh->HelloInterval));
-		 	printf("\t|-Options : %x \n",(unsigned char)ospfh->Options);
-		 	printf("\t|-Priority: %d\n",(unsigned char)ospfh->Priority);
-		 	printf("\t|-RouterDeadInterval : %i\n",ntohl((unsigned int)ospfh->RouterDeadInterval));
-		 	printf("\t|-DesignatedRouter : %s\n",inet_ntoa(designated.sin_addr));
-			printf("\t|-Backup Designated Router : %s\n",inet_ntoa(backupdesignated.sin_addr));
-
+			if(DEBUG==true)
+				{
+				printf("\t|-Network Mask : %s\n",inet_ntoa(mask.sin_addr));
+				printf("\t|-Hello interval : %i\n",(unsigned short)ntohs(ospfh->HelloInterval));
+			 	printf("\t|-Options : %x \n",(unsigned char)ospfh->Options);
+			 	printf("\t|-Priority: %d\n",(unsigned char)ospfh->Priority);
+			 	printf("\t|-RouterDeadInterval : %i\n",ntohl((unsigned int)ospfh->RouterDeadInterval));
+			 	printf("\t|-DesignatedRouter : %s\n",inet_ntoa(designated.sin_addr));
+				printf("\t|-Backup Designated Router : %s\n",inet_ntoa(backupdesignated.sin_addr));
+				}
 	 		
 		 	int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfhello));
-		 	//printf("Trail: %i\n",total);
-		 	//printf("Total. %i eth: %i ip: %i  ospfh %i ospfhe %i Tail: %i",ntohs(ip->tot_len),sizeof(struct ethhdr),sizeof(struct iphdr),sizeof(ospfheader),sizeof(ospfhello),total);
-		 	/*if(total==0)
-		 		{
-		 		struct sockaddr_in neighbor0;
-		 		memset(&neighbor0, 0, sizeof(neighbor0));
-				neighbor0.sin_addr.s_addr = ospfh->Neighbor;
-		 		printf("\t|-Neighbor[0] : %s\n",inet_ntoa(neighbor0.sin_addr));	 	
-			 	}
-		 	*/
-			if(total>=0)
+		 	if(total>=0)
 				{
 				int num_neighbors=total/4+1;
 //		 		printf("Total. %i eth: %i ip: %i  ospfh %i ospfhe %i Tail: %i",ntohs(ip->tot_len),sizeof(struct ethhdr),sizeof(struct iphdr),sizeof(ospfheader),sizeof(ospfhello),total);
 			 	struct sockaddr_in neighbor[num_neighbors];
+			 	
 			 	for (int k=0;k<num_neighbors;k++)
 			 		{
 			 		memset(&neighbor[k], 0, sizeof(neighbor));
 					neighbor[k].sin_addr.s_addr = ospfh->Neighbor+k;
 				 	for(int k=0;k<num_neighbors;k++)
 				 		{
-				 		printf("\t|-Neighbor[%i] : %s\n",k,inet_ntoa(neighbor[k].sin_addr));
-				 		}
+				 		if(DEBUG==true)
+							{		
+				 			printf("\t|-Neighbor[%i] : %s\n",k,inet_ntoa(neighbor[k].sin_addr));
+				 			}
+
+				 		NB.Neighbor_ID=neighbor[k].sin_addr.s_addr;
+				 		NB.Priority=ospfh->Priority;
+				 		NB.dead_time=4*ospfh->HelloInterval;
+				 		NB.interface_number=1;
+				 		bool found=false;
+				 		//printf("Size: %i\n",Neighbor.size());
+				 		for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
+				 			{
+				 			if (i->Neighbor_ID==NB.Neighbor_ID)
+				 				{
+				 				//printf("%i %i\n",i->Neighbor_ID,NB.Neighbor_ID);
+				 				found=true;	
+				 				}
+					 		}
+					 	if(found==false)
+					 		{
+						 	Neighbor.push_back(NB); 
+						 	}
+						if(Neighbor.size()==0)
+							Neighbor.push_back(NB);  
+						}
 		 			}
 	 		 	}
 	 		 }
 	}
 }
-}
 
+
+
+int ospf_f::decode(){
+
+
+
+
+}
 
 

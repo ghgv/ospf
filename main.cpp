@@ -31,6 +31,7 @@
 #include "macs.h"
 #include "ospf.h"
 #include "cli.h"
+#include "recv.h"
 
 
 
@@ -53,8 +54,9 @@ char input[50] = " ";
 unsigned char *buffer = (unsigned char *) malloc(65536); //to receive data
 
 ospf_f ospf_header;
+receiver RX;
 
-enum _Boolean_  { FALSE=0, TRUE=1 };
+//enum _Boolean_  { FALSE=0, TRUE=1 };
 
 int create_socket(char *device)
 {
@@ -67,12 +69,12 @@ int create_socket(char *device)
 	sock_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
    	if(sock_fd == 0)
 		{
-		printf("ERR: socket creation for device: %s\n", device); return FALSE; 
+		printf("ERR: socket creation for device: %s\n", device); return false; 
 		}
 	strncpy(ifr.ifr_name, device, sizeof(ifr.ifr_name));
 	if(ioctl(sock_fd, SIOCGIFINDEX, &ifr) == -1) 
 		{
-		printf(" ERR: ioctl failed for device: %s\n", device); return FALSE; 
+		printf(" ERR: ioctl failed for device: %s\n", device); return false; 
 		}
 
 	sll.sll_family      = AF_PACKET;
@@ -80,7 +82,7 @@ int create_socket(char *device)
 	sll.sll_protocol    = htons(ETH_P_ALL);
 	if(bind(sock_fd, (struct sockaddr *) &sll, sizeof(sll)) == -1) 
 		{ 
-		printf("ERR: bind failed for device: %s\n", device); return FALSE; 
+		printf("ERR: bind failed for device: %s\n", device); return false; 
 		}
 return sock_fd;
 }
