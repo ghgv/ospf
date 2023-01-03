@@ -65,11 +65,16 @@ class ospf_f{
 		ospfheader header;
 		ospfhello hellof;
 		void checksum(ospfheader , ospfhello );
-		static int ReceiverOSPF2();
+		
+		static int ReceiverOSPFv22(struct iphdr *,int , unsigned char *);
 		void hello();
 		int *encode();
 		int decode();
+		static int ospf_f::SM(void);
+		
 		ospf_f();
 };
+
+int transmit_hello();
 
 #endif

@@ -6,8 +6,8 @@
 CC = g++
 CFLAGS = -Wall -g -fpermissive  -fconcepts -O
  
-ospfd: main.o ospf.o cli.o neighbors.o tokenizer.o interfaces.o recv.o
-	$(CC) $(CFLAGS) main.o ospf.o cli.o neighbors.o tokenizer.o interfaces.o recv.o -o ospfd -lpthread -lreadline
+ospfd: main.o ospf.o cli.o neighbors.o tokenizer.o interfaces.o recv.o transmitter.o registration.o
+	$(CC) $(CFLAGS) main.o ospf.o cli.o neighbors.o tokenizer.o interfaces.o recv.o transmitter.o registration.o -o ospfd -lpthread -lreadline
 
 main.o: main.cpp
 	$(CC) $(CFLAGS) -c main.cpp
@@ -27,6 +27,12 @@ recv.o: recv.cpp
 	
 interfaces.o: interfaces.cpp
 	$(CC) $(CFLAGS) -c interfaces.cpp
+
+transmitter.o: transmitter.cpp
+	$(CC) $(CFLAGS) -c transmitter.cpp
+
+registration.o: registration.cpp
+	$(CC) $(CFLAGS) -c registration.cpp
 
 clean:
 	rm *.o ospfd

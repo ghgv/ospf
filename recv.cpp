@@ -1,4 +1,5 @@
 #include "recv.h"
+#include "ospf.h"
 #include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
@@ -73,12 +74,12 @@ static int receiver::rx()
 	sll3.sll_family    = AF_PACKET;
 	sll3.sll_ifindex   =  if_nametoindex("ens3f1");//fix me
 	sll3.sll_protocol  = htons(ETH_P_ALL);
-	int rc = bind(sock_r, (struct sockaddr *)&sll3, sizeof(sll3));
+	bind(sock_r, (struct sockaddr *)&sll3, sizeof(sll3));//make sure about the interface number
 	while(1)
 	{
 		
 		buflen=recvfrom(sock_r,buffer,65536,0,&saddr,(socklen_t *)&saddr_len);
-
+		
 		if(buflen<0)
 		{
 			printf("error in reading recvfrom function\n");
@@ -115,7 +116,10 @@ static int receiver::rx()
 	 	printf("\t|-Destination IP : %s\n",inet_ntoa(dest.sin_addr));
 	 	}
 	 if(((unsigned int)ip->protocol)==89)
-	 		printf("OSPFv2");
+	 	{	
+	 	
+	 	ospf_f::ReceiverOSPFv22(ip,sll3.sll_ifindex,buffer );
+	 	}
 	 		
 	}
 }

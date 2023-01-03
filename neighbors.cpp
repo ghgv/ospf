@@ -5,7 +5,6 @@
 using namespace std;  
 
 
- 
 /*
 	vector<neighbor> a; 
 	neighbor uno,dos,tres;

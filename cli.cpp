@@ -22,6 +22,9 @@ extern char input[50];
 
 extern vector<neighbor_t> Neighbor;
 
+
+static const char * const states_num[] = { "Down", "Init", "ExStart", "Exchange"};
+
 int cli()
 {
 	char* input, shell_prompt[100];
@@ -55,7 +58,9 @@ int cli()
      		}
      		else if(strcmp(input,"undebug")== 0)
      		{
+     		
 		DEBUG=false;
+		
      		}
      		else if(strcmp(input,"exit")== 0)
      		{
@@ -72,9 +77,10 @@ int cli()
 				memset(&address, 0, sizeof(address));
 				address.sin_addr.s_addr = (unsigned int)i->addr;
 
-				printf("%s \t%i \t%s \t%i \t\t%s \t%i \n",inet_ntoa(neighbor.sin_addr), i->Priority ,"NULL",i->dead_time,inet_ntoa(address.sin_addr),i->interface_number);
+				printf("%s \t%i \t%s \t%i \t\t%s \t%i \n",inet_ntoa(neighbor.sin_addr), i->Priority ,states_num[i->State] ,i->dead_time,inet_ntoa(address.sin_addr),i->interface_number);
 				}
      		}
+     		
      		else if(strstr(input, "ping")!=NULL)  			
      			{
      			vector<string> out;
@@ -108,7 +114,7 @@ int cli()
  
 void startCLI() 
 {
-	printf("Aqios2");
+
     std::thread t(cli);
     t.detach();
 }

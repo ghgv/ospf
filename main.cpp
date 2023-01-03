@@ -32,6 +32,7 @@
 #include "ospf.h"
 #include "cli.h"
 #include "recv.h"
+#include "transmitter.h"
 
 
 
@@ -39,22 +40,22 @@
 #define IPHSIZE         20
 #define TCPHSIZE        20
 
-typedef unsigned char  BYTE;             /* 8-bit   */
-typedef unsigned short BYTEx2;           /* 16-bit  */
-typedef unsigned long  BYTEx4;           /* 32-bit  */
+
 
 typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
 
-char *argumento1=NULL; // IP address
-char *argumento2=NULL; // Interface
-bool DEBUG=false;
+int sock_fd;
+char *argumento1=NULL; // Interface
+char *argumento2=NULL; // IP
+bool DEBUG=0;
 char input[50] = " ";
 unsigned char *buffer = (unsigned char *) malloc(65536); //to receive data
 
-ospf_f ospf_header;
+ospf_f *ospf_header;
 receiver RX;
+transmitter *TX;
 
 //enum _Boolean_  { FALSE=0, TRUE=1 };
 
@@ -87,7 +88,7 @@ int create_socket(char *device)
 return sock_fd;
 }
 
-unsigned short in_cksum(u16 *ptr, int nbytes)
+unsigned short in_cksum1(u16 *ptr, int nbytes)
 {
   register long sum=0;
   u16 oddbyte;
@@ -101,12 +102,12 @@ unsigned short in_cksum(u16 *ptr, int nbytes)
   sum  = (sum >> 16)+(sum & 0xffff); sum+=(sum >> 16); answer = ~sum;
   return(answer);
 }
-
 int independentThread() 
+
 {
 	
     	std::cout << "Starting process ospf.\n";
-    	int sock_fd = create_socket(argumento1);
+    	sock_fd = create_socket(argumento1);
 		if(!(sock_fd) ) 
 		{
 			printf("no sock_fd found\n"); return 0; 
@@ -128,12 +129,12 @@ int independentThread()
 		ip.ttl        = 1;//htons(1);
 		ip.protocol   = 0x59;
 		ip.saddr      = inet_addr(argumento2);
-		ip.daddr	     = inet_addr("224.0.0.5");
-		ip.check      = (unsigned short)in_cksum((unsigned short *)&ip, IPHSIZE);
+		ip.daddr	= inet_addr("224.0.0.5");
+		ip.check      = (unsigned short)in_cksum1((unsigned short *)&ip, IPHSIZE);
 		BYTE buf[300];
 		memcpy(buf, l2, ETHSIZE);
 		memcpy(buf+ETHSIZE, &ip, IPHSIZE);
-		memcpy(buf+ETHSIZE+IPHSIZE, &ospf_header.header, 48); 
+		//memcpy(buf+ETHSIZE+IPHSIZE, (const void *)ospf_header->header, 48); 
 		
 		write(sock_fd, (BYTE *)buf, ETHSIZE+ntohs(ip.tot_len));
 
@@ -145,18 +146,20 @@ int independentThread()
 void threadCaller() 
 {
 
-    std::thread t(independentThread);
-    t.detach();
+    //std::thread t(independentThread);
+    //t.detach();
 }
 
 
 int main(int argc, char ** argv)
 {
 	startCLI();
-	threadCaller();
+	//threadCaller();
 	
-	argumento1=argv[1]; // IP address
-	argumento2=argv[2]; // Interface
+	argumento1=argv[1]; // Interface
+	argumento2=argv[2]; // IP
+	TX= new transmitter(argumento1);
+	ospf_header = new ospf_f();
 	while(1){}
 	
 	return 0;
