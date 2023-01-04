@@ -23,7 +23,7 @@ extern char input[50];
 extern vector<neighbor_t> Neighbor;
 
 
-static const char * const states_num[] = { "Down", "Init", "ExStart", "Exchange"};
+static const char * const states_num[] = { "Down", "Init", "ST_Two_Way" ,"ExStart", "Exch"};
 
 int cli()
 {

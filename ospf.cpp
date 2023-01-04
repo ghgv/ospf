@@ -81,7 +81,7 @@ ospf_f::ospf_f(){
 	header.auth1=htonl(0);
 	DEBUG=false;
 	hello();
-	checksum((ospfheader )header, (ospfhello) hellof);
+	checksum((ospfheader )header, (ospfhello) hellof,12);
 	head= malloc(1500);
 	memcpy(head,&header,48);
 	//printf("CS  %04X\n", header.checksum);
@@ -99,7 +99,7 @@ int ospf_f::*encode()
 }
 
 
-void ospf_f::checksum(ospfheader header1, ospfhello header2){
+void ospf_f::checksum(ospfheader header1, ospfhello header2,int limit){
 	
 	unsigned int check=0;
 	unsigned short *head = NULL;
@@ -115,7 +115,7 @@ void ospf_f::checksum(ospfheader header1, ospfhello header2){
         	check += (head[i]);
 	        check = (check & 0xFFFF) + (check >> 16);
     	}
-	for(int i = 0; i < 12; i++)  //fix me
+	for(int i = 0; i < limit; i++)  //fix me
     	{
         	check += (head3[i]);
 	        check = (check & 0xFFFF) + (check >> 16);
@@ -158,31 +158,32 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 		 	printf("\t|-Autype : %i\n",(unsigned short)ospff->Autype);
 		 	printf("\t|-Auth  : %l\n", (unsigned long)ospff->auth1);
 			}
-					
- 		ospfhello *ospfh = (ospfhello*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
- 		struct sockaddr_in mask, designated, backupdesignated; //network mask
- 		memset(&mask, 0, sizeof(mask));
-		mask.sin_addr.s_addr = ospfh->network_mask;
- 		memset(&designated, 0, sizeof(designated));
-		designated.sin_addr.s_addr = ospfh->DesignatedRouter;
-		memset(&backupdesignated, 0, sizeof(backupdesignated));
-		backupdesignated.sin_addr.s_addr = ospfh->BackupDesignatedRouter;
+		if((unsigned char)ospff->type==1)
+		{			
+	 		ospfhello *ospfh = (ospfhello*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
+	 		struct sockaddr_in mask, designated, backupdesignated; //network mask
+	 		memset(&mask, 0, sizeof(mask));
+			mask.sin_addr.s_addr = ospfh->network_mask;
+	 		memset(&designated, 0, sizeof(designated));
+			designated.sin_addr.s_addr = ospfh->DesignatedRouter;
+			memset(&backupdesignated, 0, sizeof(backupdesignated));
+			backupdesignated.sin_addr.s_addr = ospfh->BackupDesignatedRouter;
+			
+			if(DEBUG==true)
+				{
+				printf("OSPF hello: \n");
+				printf("\t|-Network Mask : %s\n",inet_ntoa(mask.sin_addr));
+				printf("\t|-Hello interval : %i\n",(unsigned short)ntohs(ospfh->HelloInterval));
+			 	printf("\t|-Options : %x \n",(unsigned char)ospfh->Options);
+			 	printf("\t|-Priority: %d\n",(unsigned char)ospfh->Priority);
+			 	printf("\t|-RouterDeadInterval : %i\n",ntohl((unsigned int)ospfh->RouterDeadInterval));
+			 	printf("\t|-DesignatedRouter : %s\n",inet_ntoa(designated.sin_addr));
+				printf("\t|-Backup Designated Router : %s\n",inet_ntoa(backupdesignated.sin_addr));
+				}
 		
-		if(DEBUG==true)
-			{
-			printf("OSPF hello: \n");
-			printf("\t|-Network Mask : %s\n",inet_ntoa(mask.sin_addr));
-			printf("\t|-Hello interval : %i\n",(unsigned short)ntohs(ospfh->HelloInterval));
-		 	printf("\t|-Options : %x \n",(unsigned char)ospfh->Options);
-		 	printf("\t|-Priority: %d\n",(unsigned char)ospfh->Priority);
-		 	printf("\t|-RouterDeadInterval : %i\n",ntohl((unsigned int)ospfh->RouterDeadInterval));
-		 	printf("\t|-DesignatedRouter : %s\n",inet_ntoa(designated.sin_addr));
-			printf("\t|-Backup Designated Router : %s\n",inet_ntoa(backupdesignated.sin_addr));
-			}
-		
-	 	int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfhello));
-	 	//printf("\t|-Total : %i\n",total);
-		 	if(total >= 0)
+			int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfhello));
+	 
+			if(total >= 0)
 				{
 				int num_neighbors=total/4+1;
 				
@@ -229,7 +230,34 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 		 		
 	 		 	}
 	 		 
-	 		 
+		} 
+		if((unsigned char)ospff->type==2)
+		{
+			
+			ospfdatabasedescription *ospfdd = (ospfdatabasedescription*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
+	 		if(DEBUG==true)
+				{
+				printf("OSPF DD: \n");
+				printf("\t|-MTU : %i\n",ntohs(ospfdd->mtu));
+				//
+				printf("\t|-Options: %i\n",ospfdd->options);
+			 	printf("\t|-DD : %x \n",(unsigned char)ospfdd->dd);
+			 	printf("\t|-Sequence : %i\n",ntohl((unsigned int)ospfdd->sequence));
+			 	
+				}
+			int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription));
+			if(total >= 0)
+				{
+				int num_lsa=total/4+1;
+				ospflsaheader *ospflsa =(ospflsaheader *)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription));
+				if(DEBUG==true)
+					{
+					printf("\t|-LSA[0] : %i\n",ntohl((unsigned int)ospfdd->lsa_header));
+					printf("\t|-Age    : %i\n",ntohs((unsigned short)ospflsa->lsa_age));
+					}
+				}
+		
+		}
 	 		 
 	return 0;
 }
@@ -262,15 +290,25 @@ static int ospf_f::SM(void)
 		    		{
 		    		case ST_Down:
 		    			i->State=1;
+					//ospf_f::make_basic();
 					transmit_hello();
 					break;
-	
+				case ST_Init:
+					struct in_addr destination;
+					destination.s_addr=i->Neighbor_ID;
+					if(strcmp(inet_ntoa(destination),"192.168.2.12")==0)
+						{
+						printf("Active\n");
+						i->State=2;
+	 			      		transmit_hello2(i->Neighbor_ID);
+						}		      			
+			      		break;
 				case ST_Two_Way:
-			      		i->State=2;
+			      		i->State=3;
 			      		transmit_hello();
 			      		break;
 			      	case ST_ExStart:
-			      		i->State=3;
+			      		i->State=4;
 			      		transmit_hello();
 			      		break;
 
@@ -286,13 +324,24 @@ static int ospf_f::SM(void)
 	}
 }
 
+
+
 int transmit_hello(){
-	printf("Hello");
+	printf("Hello multicast");
 	unsigned char buffer2[48];
 	memcpy(buffer2, head, 48); 
 	TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer2);//OJO
 return 0;
 	
 }
-
+int transmit_hello2(unsigned int dest){
+	struct in_addr destination;
+	destination.s_addr=dest;
+	printf("Hello2: %s",inet_ntoa(destination));
+	unsigned char buffer2[48];
+	memcpy(buffer2, head, 48); 
+	TX->transmit(0x59,"192.168.0.2",(const char *)inet_ntoa(destination), 48, buffer2);//OJO
+return 0;
+	
+}
 

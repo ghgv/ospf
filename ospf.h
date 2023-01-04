@@ -54,6 +54,27 @@ typedef struct  OSPFHELLO
 		unsigned int BackupDesignatedRouter;
 		unsigned int Neighbor;
 	}  __attribute__((packed)) ospfhello;
+	
+typedef struct  OSPFDD
+	{
+		unsigned short mtu;
+		unsigned char options;
+		unsigned char dd;
+		unsigned int sequence;
+		unsigned int lsa_header;
+	}  __attribute__((packed)) ospfdatabasedescription;
+
+typedef struct  OSPFLSAHEADER
+	{
+		unsigned short lsa_age;
+		unsigned char options;
+		unsigned char lsa_type;
+		unsigned int link_state_id;
+		unsigned int adv_router;
+		unsigned int lsa_sequence;
+		unsigned short lsa_checksum;
+		unsigned short length;
+	}  __attribute__((packed)) ospflsaheader;
 
 extern unsigned char *buffer;
 
@@ -64,7 +85,7 @@ class ospf_f{
 
 		ospfheader header;
 		ospfhello hellof;
-		void checksum(ospfheader , ospfhello );
+		void checksum(ospfheader , ospfhello,int );
 		
 		static int ReceiverOSPFv22(struct iphdr *,int , unsigned char *);
 		void hello();
@@ -76,5 +97,6 @@ class ospf_f{
 };
 
 int transmit_hello();
+int transmit_hello2(unsigned int dest);
 
 #endif
