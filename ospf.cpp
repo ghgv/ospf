@@ -43,6 +43,9 @@ extern transmitter *TX;
 vector<neighbor_t> Neighbor;
 neighbor_t NB;
 unsigned char *head;
+ospfheader 	header2;
+ospfhello	hello2;
+ospfdatabasedescription dd2;
 
 
 
@@ -124,6 +127,7 @@ void ospf_f::checksum(ospfheader header1, ospfhello header2,int limit){
     	
 	header.checksum=(~check &  0xFFFF);
 }
+
 
 void ospf_f::hello()
 {
@@ -290,8 +294,8 @@ static int ospf_f::SM(void)
 		    		{
 		    		case ST_Down:
 		    			i->State=1;
-					//ospf_f::make_basic();
 					transmit_hello();
+					sleep(5);
 					break;
 				case ST_Init:
 					struct in_addr destination;
@@ -301,36 +305,107 @@ static int ospf_f::SM(void)
 						printf("Active\n");
 						i->State=2;
 	 			      		transmit_hello2(i->Neighbor_ID);
+	 			      		sleep(5);
 						}		      			
 			      		break;
 				case ST_Two_Way:
 			      		i->State=3;
-			      		transmit_hello();
+			      		transmit_dd(i->Neighbor_ID);
+			      		sleep(5);
 			      		break;
 			      	case ST_ExStart:
 			      		i->State=4;
-			      		transmit_hello();
+			      		//transmit_hello();
 			      		break;
 
 				}
 		     	break;
 		    	}
 		}
-		if(Neighbor.size()==0){
-		
-				TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer);//OJO		
-				sleep(10);
-				}
+		if(Neighbor.size()==0)
+			{
+			TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer);//OJO		
+			sleep(10);
+			}
 	}
+return 0;
 }
 
 
+int checksum2(ospfheader header1, ospfhello header22,int limit){
+	
+	unsigned int check=0;
+	unsigned short *head = NULL;
+	unsigned char *head2, *head4 = NULL;
+	unsigned short *head3  = NULL;
+	head = (unsigned short *)&header1;
+	head2 = (unsigned char *)&header1;
+	head3 = (unsigned short *)&header22;
+	head4 = (unsigned char *)&header22;
+	
+	for(int i = 0; i < 12; i++)  //Omiting the Autentication byes
+    	{
+        	check += (head[i]);
+	        check = (check & 0xFFFF) + (check >> 16);
+    	}
+	for(int i = 0; i < limit; i++)  //fix me
+    	{
+        	check += (head3[i]);
+	        check = (check & 0xFFFF) + (check >> 16);
+    	}
+	header2.checksum=(~check &  0xFFFF);
+	return 0;
+}
+
+int checksum3(ospfheader header1, ospfdatabasedescription header22,int limit){
+	
+	unsigned int check=0;
+	unsigned short *head = NULL;
+	unsigned char *head2, *head4 = NULL;
+	unsigned short *head3  = NULL;
+	head = (unsigned short *)&header1;
+	head2 = (unsigned char *)&header1;
+	head3 = (unsigned short *)&header22;
+	head4 = (unsigned char *)&header22;
+	
+	for(int i = 0; i < 12; i++)  //Omiting the Autentication byes
+    	{
+        	check += (head[i]);
+	        check = (check & 0xFFFF) + (check >> 16);
+    	}
+	for(int i = 0; i < limit; i++)  //fix me
+    	{
+        	check += (head3[i]);
+	        check = (check & 0xFFFF) + (check >> 16);
+    	}
+	header2.checksum=(~check &  0xFFFF);
+	return 0;
+}
 
 int transmit_hello(){
 	printf("Hello multicast");
-	unsigned char buffer2[48];
-	memcpy(buffer2, head, 48); 
-	TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer2);//OJO
+	header2.version=2; 
+	header2.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
+	header2.packetlenght=htons(44);
+	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.area_id=inet_addr("0.0.0.0");
+	header2.checksum=htons(0);
+	header2.Autype=htons(0);
+	header2.auth1=htonl(0);
+	hello2.network_mask=inet_addr("255.255.255.0");
+	hello2.HelloInterval=htons(10); //30 seconds
+	hello2.Options=0x2;
+	hello2.Priority=1;
+	hello2.RouterDeadInterval=htonl(40);
+	hello2.DesignatedRouter=inet_addr("192.168.0.1");
+	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
+	hello2.Neighbor=inet_addr("0.0.0.0");
+	checksum2((ospfheader )header2, (ospfhello) hello2,12);
+	unsigned char buffer2[44];
+	memcpy(buffer2, &header2, 24);
+	memcpy((buffer2+24), &hello2, 20); 
+	TX->transmit(0x59,"192.168.0.2","224.0.0.5", 44, buffer2);//OJO
+	
 return 0;
 	
 }
@@ -338,10 +413,56 @@ int transmit_hello2(unsigned int dest){
 	struct in_addr destination;
 	destination.s_addr=dest;
 	printf("Hello2: %s",inet_ntoa(destination));
+	header2.version=2; 
+	header2.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
+	header2.packetlenght=htons(48);
+	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.area_id=inet_addr("0.0.0.0");
+	header2.checksum=htons(0);
+	header2.Autype=htons(0);
+	header2.auth1=htonl(0);
+	hello2.network_mask=inet_addr("255.255.255.0");
+	hello2.HelloInterval=htons(10); //30 seconds
+	hello2.Options=0x2;
+	hello2.Priority=1;
+	hello2.RouterDeadInterval=htonl(40);
+	hello2.DesignatedRouter=inet_addr("192.168.0.1");
+	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
+	hello2.Neighbor=inet_addr((const char *)inet_ntoa(destination));
+	checksum2((ospfheader )header2, (ospfhello) hello2,12);// 12 sin uso!
+	
 	unsigned char buffer2[48];
-	memcpy(buffer2, head, 48); 
-	TX->transmit(0x59,"192.168.0.2",(const char *)inet_ntoa(destination), 48, buffer2);//OJO
+	memcpy(buffer2, &header2, 24);
+	memcpy((buffer2+24), &hello2, 24); 
+	TX->transmit(0x59,"192.168.0.2","192.168.0.1", 48, buffer2);//OJO
+	sleep(5);
 return 0;
 	
 }
 
+int transmit_dd(unsigned int dest){
+	struct in_addr destination;
+	destination.s_addr=dest;
+	printf("DD: %s ",inet_ntoa(destination));
+	printf("Sizedof dd %d\n",sizeof(ospfdatabasedescription));
+	header2.version=2; 
+	header2.type=2; //1 Hello 2, database description DD, LSR, LSU ,LSACV
+	header2.packetlenght=htons(32);
+	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.area_id=inet_addr("0.0.0.0");
+	header2.checksum=htons(0);
+	header2.Autype=htons(0);
+	header2.auth1=htonl(0);
+	dd2.mtu=htons(1500);
+	dd2.options=0x02;
+	dd2.dd=0;
+	dd2.sequence=htonl(20);
+	checksum3((ospfheader )header2, (ospfdatabasedescription) dd2,4);
+	unsigned char buffer2[48];
+	memcpy(buffer2, &header2, 24);
+	memcpy((buffer2+24), &dd2, 8); 
+	TX->transmit(0x59,"192.168.0.2","192.168.0.1", 32, buffer2);//OJO
+	sleep(5);
+return 0;
+	
+}

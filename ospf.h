@@ -98,5 +98,6 @@ class ospf_f{
 
 int transmit_hello();
 int transmit_hello2(unsigned int dest);
+int transmit_dd(unsigned int dest);
 
 #endif

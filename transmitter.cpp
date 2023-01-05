@@ -21,6 +21,7 @@ extern char *argumento1;
 extern int sock_fd;
 
 BYTE l3[14] = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x05, 0x6c, 0xb3, 0x11, 0x1c, 0x90, 0x81, 0x08, 0x00};
+BYTE l4[14] = { 0x00, 0x00, 0x0c, 0x5c, 0xf6, 0x10, 0x6c, 0xb3, 0x11, 0x1c, 0x90, 0x81, 0x08, 0x00};
 
 transmitter::transmitter(){
 }
@@ -100,8 +101,10 @@ int transmitter::transmit(int protocol,unsigned char *sour_addr,unsigned char *d
 	ip.daddr      = inet_addr((const char *)dest_addr);
 	ip.check      = (unsigned short)in_cksum((unsigned short *)&ip, IPHSIZE);
 	BYTE buf[300];
-	
-	memcpy(buf, l3, ETHSIZE);
+	if(strcmp((const char *)dest_addr,"224.0.0.5")==0)
+		memcpy(buf, l3, ETHSIZE);
+	else 	
+		memcpy(buf, l4, ETHSIZE);
 	memcpy(buf+ETHSIZE, &ip, IPHSIZE);
 	memcpy(buf+ETHSIZE+IPHSIZE, buffer, buffer_length); 
 	write(this->socket_fd, (BYTE *)buf, ETHSIZE+ntohs(ip.tot_len));
