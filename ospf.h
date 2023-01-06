@@ -97,7 +97,7 @@ class ospf_f{
 };
 
 int transmit_hello();
-int transmit_hello2(unsigned int dest);
-int transmit_dd(unsigned int dest);
+int transmit_hello2(unsigned int ,unsigned int);
+int transmit_dd(unsigned int ,unsigned int ,unsigned int);
 
 #endif

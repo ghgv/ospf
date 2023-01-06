@@ -117,8 +117,8 @@ static int receiver::rx()
 	 	}
 	 if(((unsigned int)ip->protocol)==89)
 	 	{	
-	 	
-	 	ospf_f::ReceiverOSPFv22(ip,sll3.sll_ifindex,buffer );
+	 	if(ip->saddr!=0x0200a8c0)
+		 	ospf_f::ReceiverOSPFv22(ip,sll3.sll_ifindex,buffer );
 	 	}
 	 		
 	}

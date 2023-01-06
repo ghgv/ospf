@@ -6,9 +6,10 @@ typedef struct Neighbor{
 	unsigned char Priority;
 	unsigned char *state="NULL";
 	unsigned int dead_time;
-	unsigned int addr;
+	unsigned int addr1;//outgoing IP
 	int State;
 	int	interface_number;
+	unsigned int sequence;
 } neighbor_t;
 
 

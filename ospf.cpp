@@ -35,6 +35,8 @@ using namespace std;
 #include "neighbors.h"
 #include "transmitter.h"
 
+static const char * const states_num[] = { "Down", "Init", "ST_Two_Way" ,"ExStart", "Exch"};
+
 extern bool DEBUG;
 extern char input[50];
 extern char *argumento1;
@@ -77,7 +79,7 @@ ospf_f::ospf_f(){
 	header.version=2; 
 	header.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
 	header.packetlenght=htons(48);
-	header.router_id=(inet_addr("192.168.1.2"));
+	header.router_id=(inet_addr("192.168.0.2"));
 	header.area_id=inet_addr("0.0.0.0");
 	header.checksum=htons(0);
 	header.Autype=htons(0);
@@ -186,47 +188,50 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 				}
 		
 			int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfhello));
-	 
+	 		//int total=(unsigned short)ntohs(ospff->packetlenght)-(sizeof(ospfheader)+sizeof(ospfhello)-sizeof(unsigned int));
 			if(total >= 0)
 				{
 				int num_neighbors=total/4+1;
 				
-		 		//printf("Total. %i eth: %i ip: %i  ospfh %i ospfhe %i Tail: %i",ntohs(ip->tot_len),sizeof(struct ethhdr),sizeof(struct iphdr),sizeof(ospfheader),sizeof(ospfhello),total);
+		 		//printf("Total ospf: %i eth: %i ip: %i  ospfh %i ospfhe %i Tail: %i",(unsigned short)ntohs(ospff->packetlenght),sizeof(struct ethhdr),sizeof(struct iphdr),sizeof(ospfheader),sizeof(ospfhello),total);
 			 	struct sockaddr_in neighbor[num_neighbors];
-			 	
+			 	printf("Num neighbors:%i\n",num_neighbors);
 			 	for (int k=0;k<num_neighbors;k++)
 			 		{
-			 		//printf("%i OSPF neighbors: %i\n",total,num_neighbors);
+
 			 		memset(&neighbor[k], 0, sizeof(neighbor));
-					neighbor[k].sin_addr.s_addr = ospfh->Neighbor+k;
-				 	for(int k=0;k<num_neighbors;k++)
+					neighbor[k].sin_addr.s_addr = (ospfh->Neighbor)++;
+				 	//for(int k=0;k<num_neighbors;k++)
 				 		{
 				 		if(DEBUG==true)
 							{		
 				 			printf("\t|-Neighbor[%i] : %s\n",k,inet_ntoa(neighbor[k].sin_addr));
 				 			}
-
-				 		NB.Neighbor_ID=neighbor[k].sin_addr.s_addr;
-				 		NB.Priority=ospfh->Priority;
-				 		NB.dead_time=4*ospfh->HelloInterval;
-				 		NB.state=(int)ST_Down;
-				 		NB.interface_number=1;
-				 		bool found=false;
-				 		//printf("Size: %i\n",Neighbor.size());
-				 		for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
+printf("Size: %i\n",Neighbor.size());
+				 		
+				 		if (neighbor[k].sin_addr.s_addr ==0x0200a8c0)//Router ID
 				 			{
-				 			if (i->Neighbor_ID==NB.Neighbor_ID)
+				 			//printf("Self %x \n",neighbor[k].sin_addr.s_addr);
+				 			//NB.state=(int)ST_Init;
+				 			for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
 				 				{
-				 				//printf("%i %i\n",i->Neighbor_ID,NB.Neighbor_ID);
-				 				found=true;	
-				 				}
-					 		}
-					 	if(found==false)
-					 		{
-						 	Neighbor.push_back(NB); 
-						 	}
-						if(Neighbor.size()==0)
+				 			//	printf("ite %x \n",i->Neighbor_ID);
+				 				if(i->Neighbor_ID==ospff->router_id)//0x0200a8c0
+				 					{
+				 					i->State=2;
+				 					printf("Self2 %x %s\n",i->Neighbor_ID,states_num[i->State]);
+				 					}
+				 				}	
+				 			}
+					 	if(Neighbor.size()==0)
 							{
+							NB.Neighbor_ID=ospff->router_id;//neighbor[k].sin_addr.s_addr;
+					 		NB.Priority=ospfh->Priority;
+					 		NB.dead_time=4*ospfh->HelloInterval;
+					 		NB.addr1=ip->saddr;
+					 		NB.State=(int)ST_Init;
+					 		NB.interface_number=1;
+					 		//printf("\t|Pushed -Neighbor[%i] : %x %x\n",k,(NB.Neighbor_ID),(NB.addr1));
 							Neighbor.push_back(NB);  
 							}
 						}
@@ -260,6 +265,13 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 					printf("\t|-Age    : %i\n",ntohs((unsigned short)ospflsa->lsa_age));
 					}
 				}
+			for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
+				{
+				if(i->Neighbor_ID==ospff->router_id)
+					{
+					i->sequence=ntohl((unsigned int)ospfdd->sequence);
+					}
+				}
 		
 		}
 	 		 
@@ -282,7 +294,7 @@ static int ospf_f::SM(void)
 	unsigned char buffer[48];
 	memcpy(buffer, head, 48); 
 	TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer);//OJO
-	
+	sleep(10);
 	
 	while (1)
 	{  
@@ -293,24 +305,24 @@ static int ospf_f::SM(void)
 			switch (State)
 		    		{
 		    		case ST_Down:
-		    			i->State=1;
+		    			//i->State=1;
 					transmit_hello();
 					sleep(5);
 					break;
 				case ST_Init:
 					struct in_addr destination;
 					destination.s_addr=i->Neighbor_ID;
-					if(strcmp(inet_ntoa(destination),"192.168.2.12")==0)
 						{
-						printf("Active\n");
-						i->State=2;
-	 			      		transmit_hello2(i->Neighbor_ID);
-	 			      		sleep(5);
+						//i->State=2;
+						printf("Hello2:\n");
+	 			      		transmit_hello2(i->Neighbor_ID,i->addr1);
+	 			      		//sleep(5);
 						}		      			
 			      		break;
 				case ST_Two_Way:
 			      		i->State=3;
-			      		transmit_dd(i->Neighbor_ID);
+			      		printf("TW:\n");
+			      		transmit_dd(i->Neighbor_ID,i->addr1,i->sequence);
 			      		sleep(5);
 			      		break;
 			      	case ST_ExStart:
@@ -387,7 +399,7 @@ int transmit_hello(){
 	header2.version=2; 
 	header2.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
 	header2.packetlenght=htons(44);
-	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.router_id=(inet_addr("192.168.0.2"));
 	header2.area_id=inet_addr("0.0.0.0");
 	header2.checksum=htons(0);
 	header2.Autype=htons(0);
@@ -409,14 +421,15 @@ int transmit_hello(){
 return 0;
 	
 }
-int transmit_hello2(unsigned int dest){
-	struct in_addr destination;
+int transmit_hello2(unsigned int neigh,unsigned int dest){
+	struct in_addr destination,neighbor_1;
 	destination.s_addr=dest;
+	neighbor_1.s_addr=neigh;
 	printf("Hello2: %s",inet_ntoa(destination));
 	header2.version=2; 
 	header2.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
 	header2.packetlenght=htons(48);
-	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.router_id=(inet_addr("192.168.0.2"));
 	header2.area_id=inet_addr("0.0.0.0");
 	header2.checksum=htons(0);
 	header2.Autype=htons(0);
@@ -428,27 +441,28 @@ int transmit_hello2(unsigned int dest){
 	hello2.RouterDeadInterval=htonl(40);
 	hello2.DesignatedRouter=inet_addr("192.168.0.1");
 	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
-	hello2.Neighbor=inet_addr((const char *)inet_ntoa(destination));
+	hello2.Neighbor=inet_addr((const char *)inet_ntoa(neighbor_1));
 	checksum2((ospfheader )header2, (ospfhello) hello2,12);// 12 sin uso!
 	
 	unsigned char buffer2[48];
 	memcpy(buffer2, &header2, 24);
 	memcpy((buffer2+24), &hello2, 24); 
-	TX->transmit(0x59,"192.168.0.2","192.168.0.1", 48, buffer2);//OJO
+	TX->transmit(0x59,"192.168.0.2",(const char *)inet_ntoa(destination), 48, buffer2);//OJO
 	sleep(5);
 return 0;
 	
 }
 
-int transmit_dd(unsigned int dest){
-	struct in_addr destination;
+int transmit_dd(unsigned int neigh,unsigned int dest,unsigned int sequence){
+	struct in_addr destination,neighbor_1;
 	destination.s_addr=dest;
+	neighbor_1.s_addr=neigh;
 	printf("DD: %s ",inet_ntoa(destination));
 	printf("Sizedof dd %d\n",sizeof(ospfdatabasedescription));
 	header2.version=2; 
 	header2.type=2; //1 Hello 2, database description DD, LSR, LSU ,LSACV
 	header2.packetlenght=htons(32);
-	header2.router_id=(inet_addr("192.168.2.12"));
+	header2.router_id=(inet_addr("192.168.0.2"));
 	header2.area_id=inet_addr("0.0.0.0");
 	header2.checksum=htons(0);
 	header2.Autype=htons(0);
@@ -456,12 +470,12 @@ int transmit_dd(unsigned int dest){
 	dd2.mtu=htons(1500);
 	dd2.options=0x02;
 	dd2.dd=0;
-	dd2.sequence=htonl(20);
+	dd2.sequence=htonl(sequence);
 	checksum3((ospfheader )header2, (ospfdatabasedescription) dd2,4);
 	unsigned char buffer2[48];
 	memcpy(buffer2, &header2, 24);
 	memcpy((buffer2+24), &dd2, 8); 
-	TX->transmit(0x59,"192.168.0.2","192.168.0.1", 32, buffer2);//OJO
+	TX->transmit(0x59,"192.168.0.2",(const char *)inet_ntoa(destination), 32, buffer2);//OJO
 	sleep(5);
 return 0;
 	

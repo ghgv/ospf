@@ -71,13 +71,14 @@ int cli()
 	     		printf("Neighbor ID \tPri \tState \tDead time \tAddress \tInterface\n");
 	     		for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i) 
 				{
-				struct sockaddr_in neighbor,address;
+				struct sockaddr_in neighbor,out_address;
 				memset(&neighbor, 0, sizeof(neighbor));
 				neighbor.sin_addr.s_addr = (unsigned int)i->Neighbor_ID;
-				memset(&address, 0, sizeof(address));
-				address.sin_addr.s_addr = (unsigned int)i->addr;
+				memset(&out_address, 0, sizeof(out_address));
+				out_address.sin_addr.s_addr = (unsigned int)i->addr1;
 
-				printf("%s \t%i \t%s \t%i \t\t%s \t%i \n",inet_ntoa(neighbor.sin_addr), i->Priority ,states_num[i->State] ,i->dead_time,inet_ntoa(address.sin_addr),i->interface_number);
+				printf("%s \t%i \t%s \t%i \t\t ",inet_ntoa(neighbor.sin_addr), i->Priority ,states_num[i->State] ,i->dead_time);//why it does not work
+				printf(" %s \t%i \n",inet_ntoa(out_address.sin_addr), i->interface_number);
 				}
      		}
      		

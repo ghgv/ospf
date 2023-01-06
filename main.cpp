@@ -49,7 +49,7 @@ typedef uint16_t u16;
 int sock_fd;
 char *argumento1=NULL; // Interface
 char *argumento2=NULL; // IP
-bool DEBUG=0;
+bool DEBUG=1;
 char input[50] = " ";
 unsigned char *buffer = (unsigned char *) malloc(65536); //to receive data
 
