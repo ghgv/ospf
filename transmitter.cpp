@@ -81,11 +81,11 @@ int transmitter::c_socket(char *device) //create socket
 int transmitter::transmit(int protocol,unsigned char *sour_addr,unsigned char *dest_addr, int buffer_length, unsigned char *buffer)
 {
 	struct iphdr ip;
-	printf("\nINF TX: Source %s ",sour_addr);
+	/*printf("\nINF TX: Source %s ",sour_addr);
 	printf("Dest %s ",dest_addr);
 	printf("Protocol: %x\n",protocol);
 	printf("%s \n",buffer);
-	printf("%i \n",buffer_length);
+	printf("%i \n",buffer_length);*/
 	
 	memset(&ip, 0x0, IPHSIZE);
 	

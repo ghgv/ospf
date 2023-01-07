@@ -74,7 +74,7 @@ typedef struct  OSPFLSAHEADER
 		unsigned int lsa_sequence;
 		unsigned short lsa_checksum;
 		unsigned short length;
-	}  __attribute__((packed)) ospflsaheader;
+	}  __attribute__((packed)) ospflsaheader; //20 bytes
 
 extern unsigned char *buffer;
 
@@ -92,6 +92,7 @@ class ospf_f{
 		int *encode();
 		int decode();
 		static int ospf_f::SM(void);
+		static int ospf_f::timer(void);
 		
 		ospf_f();
 };

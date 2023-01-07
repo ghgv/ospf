@@ -16,11 +16,13 @@ using namespace std;
 #include "neighbors.h"
 #include "tokenizer.h"
 #include "interfaces.h"
+#include "ospf.h"
 
 extern bool DEBUG;
 extern char input[50];
 
 extern vector<neighbor_t> Neighbor;
+extern vector< ospflsaheader>Lsaheader;
 
 
 static const char * const states_num[] = { "Down", "Init", "ST_Two_Way" ,"ExStart", "Exch"};
@@ -81,7 +83,30 @@ int cli()
 				printf(" %s \t%i \n",inet_ntoa(out_address.sin_addr), i->interface_number);
 				}
      		}
-     		
+     		else if(strcmp(input,"lsa")== 0)
+     		{
+
+				unsigned short lsa_age;
+		unsigned char options;
+		unsigned char lsa_type;
+		unsigned int link_state_id;
+		unsigned int adv_router;
+		unsigned int lsa_sequence;
+		unsigned short lsa_checksum;
+		unsigned short length;
+	     		printf("Age \tOptions Type \tID \tadv router \tsequence \tlength\n");
+	     		for (auto i = Lsaheader.begin(); i != Lsaheader.end(); ++i) 
+				{
+				struct sockaddr_in advertiser,Link_state_id;
+				memset(&advertiser, 0, sizeof(advertiser));
+				advertiser.sin_addr.s_addr = (unsigned int)i->adv_router;
+				memset(&Link_state_id, 0, sizeof(Link_state_id));
+				Link_state_id.sin_addr.s_addr = (unsigned int)i->link_state_id;
+
+				printf("%i \t%x \t%i \t%s \t%s \t%x \t%i \n",ntohs(i->lsa_age),i->options,i->lsa_type ,inet_ntoa(Link_state_id.sin_addr), inet_ntoa(advertiser.sin_addr),ntohl(i->lsa_sequence),ntohs(i->length));//why it does not work
+				
+				}
+     		}
      		else if(strstr(input, "ping")!=NULL)  			
      			{
      			vector<string> out;

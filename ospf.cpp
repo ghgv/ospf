@@ -43,6 +43,7 @@ extern char *argumento1;
 extern char *argumento2;//Interface name
 extern transmitter *TX;
 vector<neighbor_t> Neighbor;
+vector<ospflsaheader> Lsaheader;
 neighbor_t NB;
 unsigned char *head;
 ospfheader 	header2;
@@ -92,6 +93,8 @@ ospf_f::ospf_f(){
 	//printf("CS  %04X\n", header.checksum);
 	std::thread t(ospf_f::SM);
 	t.detach();
+	std::thread w(ospf_f::timer);
+	w.detach();
 	
 }
 
@@ -100,6 +103,23 @@ int ospf_f::*encode()
 	
 	
 	return NULL;
+
+}
+
+int ospf_f::timer()
+{
+while(1)
+	{
+	for (auto i = Lsaheader.begin(); i != Lsaheader.end(); ++i)
+		{
+			//i->lsa_age=i->lsa_age-(ntohs(1));
+			if(i->lsa_age==0)
+				Lsaheader.erase(i);
+		}
+		sleep(1);
+		
+	}
+return 0;
 
 }
 
@@ -207,7 +227,7 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 							{		
 				 			printf("\t|-Neighbor[%i] : %s\n",k,inet_ntoa(neighbor[k].sin_addr));
 				 			}
-printf("Size: %i\n",Neighbor.size());
+						//printf("Size: %i\n",Neighbor.size());
 				 		
 				 		if (neighbor[k].sin_addr.s_addr ==0x0200a8c0)//Router ID
 				 			{
@@ -219,7 +239,7 @@ printf("Size: %i\n",Neighbor.size());
 				 				if(i->Neighbor_ID==ospff->router_id)//0x0200a8c0
 				 					{
 				 					i->State=2;
-				 					printf("Self2 %x %s\n",i->Neighbor_ID,states_num[i->State]);
+				 					//printf("Self2 %x %s\n",i->Neighbor_ID,states_num[i->State]);
 				 					}
 				 				}	
 				 			}
@@ -240,7 +260,7 @@ printf("Size: %i\n",Neighbor.size());
 	 		 	}
 	 		 
 		} 
-		if((unsigned char)ospff->type==2)
+		if((unsigned char)ospff->type==2) //Database description
 		{
 			
 			ospfdatabasedescription *ospfdd = (ospfdatabasedescription*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
@@ -248,23 +268,30 @@ printf("Size: %i\n",Neighbor.size());
 				{
 				printf("OSPF DD: \n");
 				printf("\t|-MTU : %i\n",ntohs(ospfdd->mtu));
-				//
 				printf("\t|-Options: %i\n",ospfdd->options);
 			 	printf("\t|-DD : %x \n",(unsigned char)ospfdd->dd);
 			 	printf("\t|-Sequence : %i\n",ntohl((unsigned int)ospfdd->sequence));
 			 	
 				}
-			int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription));
-			if(total >= 0)
+			int total=ntohs(ip->tot_len)-(sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription)-sizeof(unsigned int ));
+			if(total > 0)
 				{
-				int num_lsa=total/4+1;
-				ospflsaheader *ospflsa =(ospflsaheader *)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription));
+				int num_lsa=total/(sizeof(ospflsaheader));
+				printf("Tail %i",num_lsa);
+				ospflsaheader *ospflsa =(ospflsaheader *)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospfdatabasedescription)-sizeof(unsigned int));
 				if(DEBUG==true)
 					{
 					printf("\t|-LSA[0] : %i\n",ntohl((unsigned int)ospfdd->lsa_header));
 					printf("\t|-Age    : %i\n",ntohs((unsigned short)ospflsa->lsa_age));
 					}
-				}
+				
+				ospflsaheader lsaheader[num_lsa];
+				for(int k=0;k<num_lsa;k++)
+					{
+					memcpy(&lsaheader[k],(ospflsa)++,sizeof(ospfheader));
+					Lsaheader.push_back(lsaheader[k]);
+					}
+				}	
 			for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
 				{
 				if(i->Neighbor_ID==ospff->router_id)
@@ -272,8 +299,8 @@ printf("Size: %i\n",Neighbor.size());
 					i->sequence=ntohl((unsigned int)ospfdd->sequence);
 					}
 				}
-		
 		}
+		
 	 		 
 	return 0;
 }
@@ -315,7 +342,7 @@ static int ospf_f::SM(void)
 						{
 						//i->State=2;
 						printf("Hello2:\n");
-	 			      		transmit_hello2(i->Neighbor_ID,i->addr1);
+	 			      	transmit_hello2(i->Neighbor_ID,i->addr1);
 	 			      		//sleep(5);
 						}		      			
 			      		break;
@@ -411,7 +438,7 @@ int transmit_hello(){
 	hello2.RouterDeadInterval=htonl(40);
 	hello2.DesignatedRouter=inet_addr("192.168.0.1");
 	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
-	hello2.Neighbor=inet_addr("0.0.0.0");
+	//hello2.Neighbor=inet_addr("0.0.0.0");
 	checksum2((ospfheader )header2, (ospfhello) hello2,12);
 	unsigned char buffer2[44];
 	memcpy(buffer2, &header2, 24);
@@ -475,6 +502,7 @@ int transmit_dd(unsigned int neigh,unsigned int dest,unsigned int sequence){
 	unsigned char buffer2[48];
 	memcpy(buffer2, &header2, 24);
 	memcpy((buffer2+24), &dd2, 8); 
+	//printf("LSA header size %i\n",sizeof(ospflsaheader));
 	TX->transmit(0x59,"192.168.0.2",(const char *)inet_ntoa(destination), 32, buffer2);//OJO
 	sleep(5);
 return 0;
