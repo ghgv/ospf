@@ -76,6 +76,14 @@ typedef struct  OSPFLSAHEADER
 		unsigned short length;
 	}  __attribute__((packed)) ospflsaheader; //20 bytes
 
+
+typedef struct  OSPFLSUPDATE
+	{
+		unsigned int  num_lsa;
+	}  __attribute__((packed)) ospflsupdate; //
+
+
+
 extern unsigned char *buffer;
 
 		

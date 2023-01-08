@@ -1,4 +1,5 @@
 #include "transmitter.h"
+#include "mactable.h"
 
 #include <stdio.h>
 #include <cstring>
@@ -19,6 +20,7 @@
 extern char *argumento2;
 extern char *argumento1;
 extern int sock_fd;
+unsigned char MAC[6]={0};
 
 BYTE l3[14] = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x05, 0x6c, 0xb3, 0x11, 0x1c, 0x90, 0x81, 0x08, 0x00};
 BYTE l4[14] = { 0x00, 0x00, 0x0c, 0x5c, 0xf6, 0x10, 0x6c, 0xb3, 0x11, 0x1c, 0x90, 0x81, 0x08, 0x00};
@@ -87,6 +89,8 @@ int transmitter::transmit(int protocol,unsigned char *sour_addr,unsigned char *d
 	printf("%s \n",buffer);
 	printf("%i \n",buffer_length);*/
 	
+	scanner(dest_addr,(unsigned char*) &MAC);
+	
 	memset(&ip, 0x0, IPHSIZE);
 	
 	ip.version    = 4;
@@ -103,8 +107,10 @@ int transmitter::transmit(int protocol,unsigned char *sour_addr,unsigned char *d
 	BYTE buf[300];
 	if(strcmp((const char *)dest_addr,"224.0.0.5")==0)
 		memcpy(buf, l3, ETHSIZE);
-	else 	
+	else {
+		memcpy(&l4,MAC,6);//[0];l4[1]=MAC[1];l4[2]=MAC[2];l4[3]=MAC[3];l4[4]=MAC[4];l4[5]=MAC[5];	
 		memcpy(buf, l4, ETHSIZE);
+		}
 	memcpy(buf+ETHSIZE, &ip, IPHSIZE);
 	memcpy(buf+ETHSIZE+IPHSIZE, buffer, buffer_length); 
 	write(this->socket_fd, (BYTE *)buf, ETHSIZE+ntohs(ip.tot_len));

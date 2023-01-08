@@ -70,7 +70,7 @@ int cli()
      		}
      		else if(strcmp(input,"neighbors")== 0)
      		{
-	     		printf("Neighbor ID \tPri \tState \tDead time \tAddress \tInterface\n");
+	     		printf("Neighbor ID \tPri \tState \tDead time \tAddress \tInt\n");
 	     		for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i) 
 				{
 				struct sockaddr_in neighbor,out_address;
@@ -94,7 +94,7 @@ int cli()
 		unsigned int lsa_sequence;
 		unsigned short lsa_checksum;
 		unsigned short length;
-	     		printf("Age \tOptions Type \tID \tadv router \tsequence \tlength\n");
+	     		printf("Age \tOptions Type \tID \t\tadv router \tsequence \tlength\n");
 	     		for (auto i = Lsaheader.begin(); i != Lsaheader.end(); ++i) 
 				{
 				struct sockaddr_in advertiser,Link_state_id;

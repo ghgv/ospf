@@ -42,6 +42,8 @@ extern char input[50];
 extern char *argumento1;
 extern char *argumento2;//Interface name
 extern transmitter *TX;
+extern char* Router_id;
+
 vector<neighbor_t> Neighbor;
 vector<ospflsaheader> Lsaheader;
 neighbor_t NB;
@@ -49,7 +51,8 @@ unsigned char *head;
 ospfheader 	header2;
 ospfhello	hello2;
 ospfdatabasedescription dd2;
-
+extern pthread_mutex_t lock;
+extern unsigned int Designated_router;
 
 
 struct ifreq ifr;
@@ -80,7 +83,7 @@ ospf_f::ospf_f(){
 	header.version=2; 
 	header.type=1; //1 Hello 2, database description DD, LSR, LSU ,LSACV
 	header.packetlenght=htons(48);
-	header.router_id=(inet_addr("192.168.0.2"));
+	header.router_id=inet_addr((const char*)Router_id);
 	header.area_id=inet_addr("0.0.0.0");
 	header.checksum=htons(0);
 	header.Autype=htons(0);
@@ -110,14 +113,20 @@ int ospf_f::timer()
 {
 while(1)
 	{
+	
 	for (auto i = Lsaheader.begin(); i != Lsaheader.end(); ++i)
 		{
-			//i->lsa_age=i->lsa_age-(ntohs(1));
+			i->lsa_age=i->lsa_age-(ntohs(1));
 			if(i->lsa_age==0)
-				Lsaheader.erase(i);
+				{
+				pthread_mutex_lock(&lock);		
+				Lsaheader.erase(i);		
+				pthread_mutex_unlock(&lock);	
+				}
+				
 		}
 		sleep(1);
-		
+	
 	}
 return 0;
 
@@ -251,6 +260,10 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 					 		NB.addr1=ip->saddr;
 					 		NB.State=(int)ST_Init;
 					 		NB.interface_number=1;
+							if(ntohl(ospff->router_id)>Designated_router)
+								{
+									printf("%% OSPF: Designated router %x",Designated_router=ntohl(ip->saddr));	
+								}
 					 		//printf("\t|Pushed -Neighbor[%i] : %x %x\n",k,(NB.Neighbor_ID),(NB.addr1));
 							Neighbor.push_back(NB);  
 							}
@@ -288,8 +301,20 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 				ospflsaheader lsaheader[num_lsa];
 				for(int k=0;k<num_lsa;k++)
 					{
+					bool found=false;	
 					memcpy(&lsaheader[k],(ospflsa)++,sizeof(ospfheader));
-					Lsaheader.push_back(lsaheader[k]);
+					pthread_mutex_lock(&lock);
+					for (auto i = Lsaheader.begin(); i != Lsaheader.end(); ++i)
+						{
+							if((i->link_state_id==lsaheader[k].link_state_id) && (i->adv_router==lsaheader[k].adv_router) && (i->lsa_type==lsaheader[k].lsa_type))
+								{
+								i->lsa_age=	lsaheader[k].lsa_age;
+								found=true;
+								}
+						}
+					if(found==false)	
+						Lsaheader.push_back(lsaheader[k]);
+					pthread_mutex_unlock(&lock);
 					}
 				}	
 			for (auto i = Neighbor.begin(); i != Neighbor.end(); ++i)
@@ -299,6 +324,14 @@ static int ospf_f::ReceiverOSPFv22(struct iphdr *ip,int interface_number, unsign
 					i->sequence=ntohl((unsigned int)ospfdd->sequence);
 					}
 				}
+		}
+		if((unsigned char)ospff->type==4) //LSU 
+		{
+			ospflsupdate *ospfu = (ospflsupdate*)(buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader));
+			printf("Number of LSA: %i\n",ntohl(ospfu->num_lsa));
+			ospflsaheader *ospflsa = (ospflsaheader*) (buffer + sizeof(struct ethhdr)+ sizeof(struct iphdr)+sizeof(ospfheader)+sizeof(ospflsupdate));
+			printf("LSUpdate Age: %i\n",ntohs(ospflsa->lsa_age));
+			printf("LSUpdate Type: %i\n",(ospflsa->lsa_type));
 		}
 		
 	 		 
@@ -320,7 +353,7 @@ static int ospf_f::SM(void)
 	printf("\nINF: SM started");
 	unsigned char buffer[48];
 	memcpy(buffer, head, 48); 
-	TX->transmit(0x59,"192.168.0.2","224.0.0.5", 48, buffer);//OJO
+	TX->transmit(0x59,(const char*)Router_id,"224.0.0.5", 48, buffer);//OJO
 	sleep(10);
 	
 	while (1)
@@ -333,8 +366,8 @@ static int ospf_f::SM(void)
 		    		{
 		    		case ST_Down:
 		    			//i->State=1;
-					transmit_hello();
-					sleep(5);
+					//transmit_hello();
+					//sleep(5);
 					break;
 				case ST_Init:
 					struct in_addr destination;
@@ -436,7 +469,7 @@ int transmit_hello(){
 	hello2.Options=0x2;
 	hello2.Priority=1;
 	hello2.RouterDeadInterval=htonl(40);
-	hello2.DesignatedRouter=inet_addr("192.168.0.1");
+	hello2.DesignatedRouter=htonl(Designated_router);//inet_addr("192.168.0.1");
 	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
 	//hello2.Neighbor=inet_addr("0.0.0.0");
 	checksum2((ospfheader )header2, (ospfhello) hello2,12);
@@ -466,7 +499,7 @@ int transmit_hello2(unsigned int neigh,unsigned int dest){
 	hello2.Options=0x2;
 	hello2.Priority=1;
 	hello2.RouterDeadInterval=htonl(40);
-	hello2.DesignatedRouter=inet_addr("192.168.0.1");
+	hello2.DesignatedRouter=htonl(Designated_router);//inet_addr("192.168.0.1");
 	hello2.BackupDesignatedRouter=inet_addr("0.0.0.0");
 	hello2.Neighbor=inet_addr((const char *)inet_ntoa(neighbor_1));
 	checksum2((ospfheader )header2, (ospfhello) hello2,12);// 12 sin uso!

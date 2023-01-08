@@ -52,6 +52,9 @@ char *argumento2=NULL; // IP
 bool DEBUG=1;
 char input[50] = " ";
 unsigned char *buffer = (unsigned char *) malloc(65536); //to receive data
+pthread_mutex_t lock;
+char * Router_id="192.168.0.2";
+unsigned int Designated_router=0;
 
 ospf_f *ospf_header;
 receiver RX;
@@ -153,6 +156,7 @@ void threadCaller()
 
 int main(int argc, char ** argv)
 {
+	
 	startCLI();
 	//threadCaller();
 	

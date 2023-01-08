@@ -62,6 +62,11 @@ static int receiver::rx()
 	return -1;
 	}
 	
+	struct timeval read_timeout;
+	read_timeout.tv_sec = 10;  // Timeout for reception
+	read_timeout.tv_usec = 0;
+	setsockopt(sock_r, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
+
 	unsigned char *buffer = (unsigned char *) malloc(65536); //to receive data
 	memset(buffer,0,65536);
 	struct sockaddr saddr;
@@ -72,7 +77,7 @@ static int receiver::rx()
 	struct sockaddr_ll   sll3;
 	memset(&sll3, 0x0, sizeof(struct sockaddr_ll));
 	sll3.sll_family    = AF_PACKET;
-	sll3.sll_ifindex   =  if_nametoindex("ens3f1");//fix me
+	sll3.sll_ifindex   = if_nametoindex("ens3f1");//fix me
 	sll3.sll_protocol  = htons(ETH_P_ALL);
 	bind(sock_r, (struct sockaddr *)&sll3, sizeof(sll3));//make sure about the interface number
 	while(1)
