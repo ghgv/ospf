@@ -89,7 +89,7 @@ int transmitter::transmit(int protocol,unsigned char *sour_addr,unsigned char *d
 	printf("%s \n",buffer);
 	printf("%i \n",buffer_length);*/
 	
-	scanner(dest_addr,(unsigned char*) &MAC);
+	//scanner(dest_addr,(unsigned char*) &MAC);
 	
 	memset(&ip, 0x0, IPHSIZE);
 	
