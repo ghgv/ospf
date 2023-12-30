@@ -3,6 +3,10 @@ import array
 import socket
 import struct
 from struct import *
+from mutils import *
+
+IP_HDR     = "> BBH HH BBH LL"
+IP_HDR_LEN = struct.calcsize(IP_HDR)
 
 def checksum(packet: bytes) -> int:
     if len(packet) % 2 != 0:
@@ -36,6 +40,35 @@ def ip_header(source_ip,dest_ip, ip_proto,framesize)-> bytes:
     ip_header = ip_header[:10] + struct.pack('H', ip_check) + ip_header[12:]
     
     return ip_header
+
+
+def ip_header_decoded(msg):
+    #print("in IP Header")
+    (verhlen, tos, iplen, ipid, frag, ttl, proto, cksum, src, dst) = struct.unpack(IP_HDR, msg)
+    #print(msg[:IP_HDR_LEN], verhlen, tos, iplen, ipid, frag, ttl, proto, cksum, src, dst)
+    
+    
+    ver  = (verhlen & 0xf0) >> 4
+    hlen = (verhlen & 0x0f) * 4
+    #print("in IP Header2:",verbose)
+    
+    #print("IP (len=%d)" % len(msg))
+    #print("ver:%s, hlen:%s, tos:%s, len:%s, id:%s, frag:%s, ttl:%s, prot:%s, cksm:%x" % (ver, hlen, int2bin(tos), iplen, ipid, frag, ttl, proto, cksum))
+    #print ("src:%s, dst:%s" % (id2str(src), id2str(dst)))
+    
+    #print("version: %s, hlen: %s, ipid: %s, proto: %s, source: %s, destination: %s"% (ver, hlen, ipid, proto,id2str(src),id2str(dst)))
+    return { "VER"  : ver,
+             "HLEN" : hlen,
+             "TOS"  : tos,
+             "IPLEN": iplen,
+             "IPID" : ipid,
+             "FRAG" : frag,
+             "TTL"  : ttl,
+             "PROTO": proto,
+             "CKSUM": cksum,
+             "SRC"  : src,
+             "DST"  : dst}
+
 	
 	
 

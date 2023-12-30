@@ -48,7 +48,7 @@ def mask2plen(mask):
 
 def plen2mask(plen):
 
-    return pow(2L, 32) - pow(2L, 32-plen)
+    return pow(2, 32) - pow(2, 32-plen)
 
 #-------------------------------------------------------------------------------
 
@@ -113,7 +113,7 @@ def rpfx2str(pfxtup):
 
 def id2pfx(id):
 
-    a = int( ((id & 0xff000000L) >> 24) & 0xff)
+    a = int( ((id & 0xff000000) >> 24) & 0xff)
     b = int( ((id & 0x00ff0000)  >> 16) & 0xff)
     c = int( ((id & 0x0000ff00)  >>  8) & 0xff)
     d = int( ((id & 0x000000ff))        & 0xff)
@@ -125,25 +125,24 @@ def id2pfx(id):
 def id2str(id):
 
     return "%d.%d.%d.%d" %\
-           (int( ((id & 0xff000000L) >> 24) & 0xff),
+           (int( ((id & 0xff000000) >> 24) & 0xff),
             int( ((id & 0x00ff0000)  >> 16) & 0xff),
             int( ((id & 0x0000ff00)  >>  8) & 0xff),
             int( (id  & 0x000000ff)         & 0xff) )
 
 #-------------------------------------------------------------------------------
 
-def str2id(str):
+def str2id(string1):
 
-    quads = string.split(str, '.')
-    ret   = (string.atol(quads[0]) << 24) + (string.atol(quads[1]) << 16) + \
-            (string.atol(quads[2]) <<  8) + (string.atol(quads[3]) <<  0)
+    quads = string1.split('.')
+    ret   = (int(quads[0]) << 24) + (int(quads[1]) << 16) +  (int(quads[2]) <<  8) + (int(quads[3]) <<  0)
     return ret
 
 #-------------------------------------------------------------------------------
 
-def str2pfx(strng):
+def str2pfx(string1):
 
-    pfx, plen = string.split(strng, '/')
+    pfx, plen = string1.split('/')
     plen = string.atoi(plen)
 
     pfx = string.split(pfx, '.')
@@ -165,23 +164,32 @@ def isid2id(str):
 
 ################################################################################
 
-def str2hex(str):
+def str2hex(string):
 
-    if str == None or str == "":
+    if string == None or string == "":
         return ""
-
-    ret = map(lambda x: '%0.2x' % x, map(ord, str))
-    ret = string.join(ret, '.')
-
-    return ret
+    print("In str2hex", string)
+    
+    #ret = map(lambda x: '%0.2x' % x, map(ord, string))
+    #ret = string.join(ret, '.')
+    #ret = string.encode("utf-8").hex()
+    string=str(string)
+    str1= string.encode('utf-8')
+    # print the converted string to bytes
+    #print(str1)
+    # convert the string bytes to the hexadecimal string
+    hex_str = str1.hex()
+    #print(hex_str)
+    return hex_str
 
 #-------------------------------------------------------------------------------
 
 def prthex(pfx, str):
-
+    print("In printhex")
+    
     if str == None or str == "":
         return ""
-
+    
     ret = ""
     for i in range(0, len(str), 16):
         ret = ret + '\n' + pfx + '0x' + str2hex(str[i:i+16])
@@ -214,7 +222,7 @@ def str2bin(str):
         for j in range(7, -1, -1):
             b = n / (2**j)
             n = n % (2**j)
-            s = s + `b`
+            s = s + "b"
         ret = ret + ("%s." % s)
 
     return ret
@@ -243,7 +251,7 @@ def int2bin(int):
     ret = "" ; bit = 0
     while int != 0:
         if bit % 8 == 0: ret = '.' + ret
-        ret = `int%2` + ret
+        ret = "int%2" + ret
         int = int >> 1
         bit += 1
 
