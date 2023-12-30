@@ -21,39 +21,7 @@ IP_HDR     = "> BBH HH BBH LL"
 IP_HDR_LEN = struct.calcsize(IP_HDR)
 
 
-#################### Parse IP Header #################
 
-IP_HDR     = "> BBH HH BBH LL"
-IP_HDR_LEN = struct.calcsize(IP_HDR)
-
-def parseIpHdr(msg, verbose =1 , level=0):
-    #print("in IP Header")
-    (verhlen, tos, iplen, ipid, frag, ttl, proto, cksum, src, dst) = struct.unpack(IP_HDR, msg)
-    if (verbose>1):
-        print(msg[:IP_HDR_LEN], verhlen, tos, iplen, ipid, frag, ttl, proto, cksum, src, dst)
-    
-    
-    ver  = (verhlen & 0xf0) >> 4
-    hlen = (verhlen & 0x0f) * 4
-    #print("in IP Header2:",verbose)
-    if (verbose>0):
-        #print("IP (len=%d)" % len(msg))
-        #print("ver:%s, hlen:%s, tos:%s, len:%s, id:%s, frag:%s, ttl:%s, prot:%s, cksm:%x" % (ver, hlen, int2bin(tos), iplen, ipid, frag, ttl, proto, cksum))
-        print ("src:%s, dst:%s" % (id2str(src), id2str(dst)))
-    
-    #print("version: %s, hlen: %s, ipid: %s, proto: %s, source: %s, destination: %s"% (ver, hlen, ipid, proto,id2str(src),id2str(dst)))
-    return { "VER"  : ver,
-             "HLEN" : hlen,
-             "TOS"  : tos,
-             "IPLEN": iplen,
-             "IPID" : ipid,
-             "FRAG" : frag,
-             "TTL"  : ttl,
-             "PROTO": proto,
-             "CKSUM": cksum,
-             "SRC"  : src,
-             "DST"  : dst} 
-##############################################################
 
 ###################### packet socket ########################
 class OSPF:
@@ -79,7 +47,7 @@ class OSPF:
 if __name__ == "__main__":
     print("Init")
     # IPC parameters
-    SOCK_FILE = '/tmp/simple-ipc.socket'
+    SOCK_FILE = '/tmp/receiver-classifier.socket'
  
     # Init socket object
     if not os.path.exists(SOCK_FILE):
@@ -119,7 +87,8 @@ if __name__ == "__main__":
                 print("len: ", len(pkt[0]))
                 head =ip_header_decoded(pkt[0][14:34])
                 print("Protocol:" ,(head["PROTO"]))
-                s.sendall(pkt[0][14:])
+                if (str(head["PROTO"])=="89"):
+                    s.sendall(pkt[0][14:])
             else:
                 ## tx some pkts to form adjacency
                 pass
