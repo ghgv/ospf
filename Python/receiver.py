@@ -82,8 +82,7 @@ if __name__ == "__main__":
 
             if len(pkt) > 0: 
                 
-                #head =ether_header(pkt)
-                #print("ethernet:" ,(head["DEST"]))
+
                 print("len: ", len(pkt[0]))
                 head =ip_header_decoded(pkt[0][14:34])
                 print("Protocol:" ,(head["PROTO"]))
