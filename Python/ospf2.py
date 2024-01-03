@@ -122,13 +122,13 @@ def parseIpHdr(msg, verbose =1 , level=0):
              "DST"  : dst}
     
 def parseOspfHdr(msg, verbose=1, level=0):
-    print("In parse OSPF Header")
+    
     if verbose > 1: 
         print(msg[:OSPF_HDR_LEN])
     (ver, typ, leng, rid, aid, cksum, autype, auth1, auth2) = struct.unpack(OSPF_HDR, msg)
-    if verbose > 0:
-        print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], len, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
-    #print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], leng, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
+    #if verbose > 0:
+    #    print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], len, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
+    print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], leng, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
     return { "VER"    : ver,
              "TYPE"   : typ,
              "LEN"    : leng,
@@ -139,6 +139,7 @@ def parseOspfHdr(msg, verbose=1, level=0):
              "AUTH1"  : auth1,
              "AUTH2"  : auth2,
              }
+
 def parseOspfOpts(opts, verbose=1, level=0):
 
     if verbose > 1: 

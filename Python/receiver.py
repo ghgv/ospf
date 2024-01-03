@@ -45,7 +45,7 @@ class OSPF:
 
 
 if __name__ == "__main__":
-    print("Init")
+    print("Statrint receiver")
     # IPC parameters
     SOCK_FILE = '/tmp/receiver-classifier.socket'
  
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     s.connect(SOCK_FILE)
     
 
-    s.sendall(b'Hello, world')
+    s.sendall(b'Hello, world,Hello, world,Hello, world,Hello, world')
     
     data = s.recv(1024)
     print(f'Received bytes: {repr(data)}')
@@ -83,7 +83,7 @@ if __name__ == "__main__":
             if len(pkt) > 0: 
                 
 
-                print("len: ", len(pkt[0]))
+                print("lenght of packet: ", len(pkt[0]))
                 head =ip_header_decoded(pkt[0][14:34])
                 print("Protocol:" ,(head["PROTO"]))
                 if (str(head["PROTO"])=="89"):

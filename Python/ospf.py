@@ -3,6 +3,7 @@ import array
 import socket
 import struct
 from struct import *
+from tcb import *
 
 
 def checksum(packet: bytes) -> int:
@@ -15,13 +16,12 @@ def checksum(packet: bytes) -> int:
 
     return (~res) & 0xffff
 
-def ospf_header(source_ip)->bytes:
+def ospf_header(ospf_packet1,type_=1)->bytes:
     opsf_ver       = 2
-    ospf_type      = 1
+    ospf_type      = type_
     ospf_lenght    = 24
-    ospf_router_id = socket.inet_aton ( source_ip)
-    print("source IP: ",source_ip)
-    ospf_area_id   = socket.inet_aton ( "0.0.0.0" )
+    ospf_router_id = socket.inet_aton ( ospf_packet1["source_ip"]) 
+    ospf_area_id   = socket.inet_aton ( ospf_packet1["area_id"] )
     ospf_checksum  = 0
     ospf_AuType    = 0
     ospf_Authentication1 = socket.inet_aton ( "0.0.0.0" )
@@ -31,9 +31,24 @@ def ospf_header(source_ip)->bytes:
     return ospf_header
 
 
-def ospf_hello(ospf_header,mask)->bytes:
+def ospf_header_json(source_ip)->bytes:
+    opsf_ver       = 2
+    ospf_type      = 1
+    ospf_lenght    = 24
+    ospf_router_id = socket.inet_aton ( source_ip)
+    ospf_area_id   = socket.inet_aton ( "0.0.0.0" )
+    ospf_checksum  = 0
+    ospf_AuType    = 0
+    ospf_Authentication1 = socket.inet_aton ( "0.0.0.0" )
+    ospf_Authentication2 = socket.inet_aton ( "0.0.0.0" )
+    
+    ospf_header = pack('!BBH4s4sHH4s4s' , opsf_ver, ospf_type, ospf_lenght, ospf_router_id, ospf_area_id, ospf_checksum, ospf_AuType, ospf_Authentication1,ospf_Authentication2)	
 
-    ospf_network_mask             = socket.inet_aton ( mask )
+    return ospf_header
+
+def ospf_hello(ospf_header,ospf_packet1)->bytes:
+
+    ospf_network_mask             = socket.inet_aton ( ospf_packet1["mask"] )
     ospf_hello_interval           = 10
     ospf_hello_options            = 2 
     ospf_router_prio              =  1
@@ -44,8 +59,10 @@ def ospf_hello(ospf_header,mask)->bytes:
     ospf_neighbor.append(socket.inet_aton ( "0.0.0.0" ))
    
     ospf_hello= pack('!4sHBB4s4s4s' , ospf_network_mask, ospf_hello_interval, ospf_hello_options, ospf_router_prio, ospf_router_dead_interval, ospf_designated_router, ospf_backup_designated_router)
-    #for i in range(1):
-    #    ospf_hello = ospf_hello + socket.inet_aton ( "0.0.0.0" )
+    
+    
+    #if ospf_packet1["neighbor"]!="":
+    ospf_hello = ospf_hello + socket.inet_aton (ospf_packet1["Router_ID"])
     
     ospf_frame = ospf_header + ospf_hello
     packet_lenght = len(ospf_frame)

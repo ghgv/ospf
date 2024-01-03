@@ -102,7 +102,6 @@ class SEND_FRAME:
         dest_ip   = "224.0.0.5"
         ip_proto  = 89
         
-        
         ospf_header_ = ospf_header(source_ip)
         ospf_packet = ospf_hello(ospf_header_,mask)
         
@@ -116,7 +115,10 @@ class SEND_FRAME:
         
         self.sender.send(frame)
         return 
+
     
+
+
     def foo(self):
         print(time.ctime())
     
@@ -153,19 +155,23 @@ def main():
             elapsed = after - before
 
             if len(rfds) > 0: 
-                rv = ospf.parseMsg(VERBOSE, 0)
+                for sock in rfds:
+                    #incoming message from remote server
+                    if sock == send_frame.from_classifier:
+                        data = sock.recv(2048)
+                        send_frame.sender.send(data)
+
             else:
                 ## tx some pkts to form adjacency
                 print("Time out1")
-                send_frame.send_default("hola")
+                #send_frame.send_default("hola")
                 pass
 
     except ProgramKilled:
         print ("Program killed: running cleanup code")
         job.stop()
 
-    except SelectTimeoutException:
-        print("Time Out2")
+
 
     except (KeyboardInterrupt):
         ospf.close()
