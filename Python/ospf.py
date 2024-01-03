@@ -66,7 +66,7 @@ def ospf_hello(ospf_header,ospf_packet1)->bytes:
     
     ospf_frame = ospf_header + ospf_hello
     packet_lenght = len(ospf_frame)
-    print("ospf_lenght: ", packet_lenght)
+    #print("ospf_lenght: ", packet_lenght)
     ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
     ospf_checksum = checksum(ospf_frame)
     
@@ -74,3 +74,21 @@ def ospf_hello(ospf_header,ospf_packet1)->bytes:
     
     
     return ospf_header
+
+def ospf_dd(ospf_header,ospf_packet1)-> bytes:
+    ospf_interface_MTU = 1500
+    ospf_options = 0
+    ospf_flags   = 0
+    ospf_lsa_header =[]
+    ospf_sequence_number =ospf_packet1["sequence_number"]
+    ospf_dd = pack('!HBBL' , ospf_interface_MTU, ospf_options, ospf_flags, ospf_sequence_number)
+    #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
+    
+    ospf_frame = ospf_header + ospf_dd
+    packet_lenght = len(ospf_frame)
+    ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
+    ospf_checksum = checksum(ospf_frame)
+    ospf_header = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
+    return ospf_header
+
+

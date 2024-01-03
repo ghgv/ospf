@@ -128,7 +128,7 @@ def parseOspfHdr(msg, verbose=1, level=0):
     (ver, typ, leng, rid, aid, cksum, autype, auth1, auth2) = struct.unpack(OSPF_HDR, msg)
     #if verbose > 0:
     #    print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], len, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
-    print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], leng, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
+    #print("OSPF: ver:%s, type:%s, len:%s, rtr id:%s, area id:%s, cksum:%x, autype:%s" % (ver, MSG_TYPES[typ], leng, id2str(rid), id2str(aid), cksum, AU_TYPES[autype],))
     return { "VER"    : ver,
              "TYPE"   : typ,
              "LEN"    : leng,
