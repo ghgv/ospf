@@ -20,7 +20,7 @@ def ospf_header(ospf_packet1,type_=1)->bytes:
     opsf_ver       = 2
     ospf_type      = type_
     ospf_lenght    = 24
-    ospf_router_id = socket.inet_aton ( ospf_packet1["source_ip"]) 
+    ospf_router_id = socket.inet_aton ( ospf_packet1["own_router_id"]) 
     ospf_area_id   = socket.inet_aton ( ospf_packet1["area_id"] )
     ospf_checksum  = 0
     ospf_AuType    = 0
@@ -51,9 +51,9 @@ def ospf_hello(ospf_header,ospf_packet1)->bytes:
     ospf_network_mask             = socket.inet_aton ( ospf_packet1["mask"] )
     ospf_hello_interval           = 10
     ospf_hello_options            = 2 
-    ospf_router_prio              =  1
+    ospf_router_prio              = 1
     ospf_router_dead_interval     = socket.inet_aton ( "0.0.0.40" ) #cambiar
-    ospf_designated_router        = socket.inet_aton ( "0.0.0.0" )
+    ospf_designated_router        = socket.inet_aton ( "192.168.0.1") #ospf_packet1["desinated_router"] )
     ospf_backup_designated_router = socket.inet_aton ( "0.0.0.0" )
     ospf_neighbor = []
     ospf_neighbor.append(socket.inet_aton ( "0.0.0.0" ))
@@ -77,10 +77,10 @@ def ospf_hello(ospf_header,ospf_packet1)->bytes:
 
 def ospf_dd(ospf_header,ospf_packet1)-> bytes:
     ospf_interface_MTU = 1500
-    ospf_options = 0
-    ospf_flags   = 0
+    ospf_options = 2
+    ospf_flags   = 7 & ospf_packet1["master"]
     ospf_lsa_header =[]
-    ospf_sequence_number =ospf_packet1["sequence_number"]
+    ospf_sequence_number =ospf_packet1["own_sequence_number"]
     ospf_dd = pack('!HBBL' , ospf_interface_MTU, ospf_options, ospf_flags, ospf_sequence_number)
     #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
     
@@ -88,7 +88,18 @@ def ospf_dd(ospf_header,ospf_packet1)-> bytes:
     packet_lenght = len(ospf_frame)
     ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
     ospf_checksum = checksum(ospf_frame)
-    ospf_header = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
-    return ospf_header
+    ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
+    return ospf_frame2
 
-
+def ospf_lsack(ospf_header,ospf_packet1)-> bytes:
+    ospf_lsa_header =[]
+    
+    #ospf_lsack = pack('!HBBL' , ospf_interface_MTU, ospf_options, ospf_flags, ospf_sequence_number)
+    #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
+    
+    ospf_frame = ospf_header 
+    packet_lenght = len(ospf_frame)
+    ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
+    ospf_checksum = checksum(ospf_frame)
+    ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
+    return ospf_frame2
