@@ -1,5 +1,6 @@
 import socket, sys, time
 import array
+import copy
 import socket
 import struct
 from struct import *
@@ -111,21 +112,20 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
     
     OSPF_LSAHDR     = "! HBB L L L HH"
     OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
-    print("--->",len)
-    for i in range(len):
+    
+    i=0
+    while  (i < (int(len))-32):     
         (LS_age, Options, LS_type, Link_state_id, Advertising_router, LS_sequence_number, LS_checksum, Length) = struct.unpack(OSPF_LSAHDR, lsa_pkt[i:i+5*4])
-        
-        print(i)
-        print("Length: ",Length)
         print("LS age: ",LS_age)
         print("LS type: ",LS_type)
         print("Link state ID: ",id2str(Link_state_id))
         print("Adv router: ",id2str(Advertising_router))
         print("LS sequence: 0x",int2hex(LS_sequence_number))
-        print("LS checksum: 0x",int2hex(LS_checksum),"\n\n")
-        c=bytes(Length)
-        Length=struct.pack('<2b', *struct.unpack('>2b', c[2:4]))
-        i=i+int(bytes(Length))
+        print("LS checksum: 0x",int2hex(LS_checksum))
+        Length1=copy.copy(swap_bytes(Length))
+        print("Length: ",Length,"\n\n")
+        i=i+20
+        print("Next i:",i)
     
 
 
