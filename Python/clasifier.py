@@ -29,6 +29,7 @@ ospf_packet1={
     "area_id":"0.0.0.0",
     "own_sequence_number":1234,
     "peer_sequence_number":0,
+    "peer_options":0,
     "master":7, #for the option bits
     "own_router_id": "192.168.5.1",
     "LSA_headers":[],
@@ -49,6 +50,8 @@ def encode(ospf_packet1):
     
 def send_dd(parts):
     print("In DB Description:")
+    print("Option flags %x " % (parts["peer_options"] and 2))
+    print("Peer Options: %x state: %s" % (parts["peer_options"],parts["state"]))
     ip_proto = 89  
     if parts["state"]=="2-way":
         print("     in 2-way")
@@ -67,7 +70,7 @@ def send_dd(parts):
         
         return
 
-    if parts["state"]=="Exstart":
+    if parts["state"]=="Exstart" and parts["peer_options"]==3:
         print("     Exstart")
         a=str2id(ospf_packet1["Router_ID"])
         b=str2id(ospf_packet1["own_router_id"])
@@ -75,6 +78,7 @@ def send_dd(parts):
             parts["master"]=6
         else:
             parts["master"]=7
+        ospf_sequence_number =ospf_packet1["own_sequence_number"]
         ospf_header_ = ospf_header(parts,2) #type 2 packet
         ospf_packet2 = ospf_dd(ospf_header_,parts)
         framesize = 20 + len(ospf_packet2)
@@ -84,9 +88,43 @@ def send_dd(parts):
         ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
         eth_type = b'\x08\x00'
         frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
-        parts["state"]="Exstart"
         out=conn2.send(frame) 
         return
+
+    if parts["state"]=="Exstart" and parts["peer_options"]==2:
+        print("     Exstart M set") #Not the last one
+        ospf_sequence_number =ospf_packet1["own_sequence_number"]
+        ospf_header_ = ospf_header(parts,2) #type 2 packet
+        ospf_packet2 = ospf_dd(ospf_header_,parts)
+        framesize = 20 + len(ospf_packet2)
+        parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
+        dstmac = "00:0f:e2:dd:9e:2c"
+        srcmac = "7c:c2:c6:45:3d:1f"
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
+        eth_type = b'\x08\x00'
+        frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
+        parts["state"]="Exchange"
+        conn2.send(frame) 
+        return
+
+    if parts["state"]=="Exchange" and parts["peer_options"]==2:
+        print("     Exstart M set") #Not the last one
+        ospf_sequence_number =ospf_packet1["own_sequence_number"]
+        ospf_header_ = ospf_header(parts,3) #type 2 packet
+        ospf_packet2 = ospf_lsreq(ospf_header_,parts)
+        framesize = 20 + len(ospf_packet2)
+        parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
+        dstmac = "00:0f:e2:dd:9e:2c"
+        srcmac = "7c:c2:c6:45:3d:1f"
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
+        eth_type = b'\x08\x00'
+        frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
+        parts["state"]="Exchange"
+        conn2.send(frame) 
+        return
+
+    
+
 
     return
 
@@ -109,53 +147,54 @@ def send_lsack(parts):
     return
 
 
-def send_hello(ospf_packet1):
+def send_hello(parts):
     print("In send hello.")
     ip_proto = 89
-    if ospf_packet1["state"]=="":
+    if parts["state"]=="":
         print(" '' ")
-        ospf_header_ = ospf_header(ospf_packet1,1)
-        ospf_packet2 = ospf_hello(ospf_header_,ospf_packet1)   
+        ospf_header_ = ospf_header(parts,1)
+        ospf_packet2 = ospf_hello(ospf_header_,parts)   
         framesize = 20+ len(ospf_packet2) 			#IP header size is hard coded
         #print("Frame size ",framesize)
-        #print("State:",ospf_packet1["state"])
-        ospf_packet1["dest_ip"]=="224.0.0.5"
+        #print("State:",parts["state"])
+        parts["dest_ip"]=="224.0.0.5"
         dstmac = "01:00:5E:00:00:05"
         srcmac = "7c:c2:c6:45:3d:1f"
-        ip_header_=ip_header( ospf_packet1["source_ip"], ospf_packet1["dest_ip"], ip_proto, framesize )
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
         eth_type = b'\x08\x00'
         frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
         conn2.sendall(frame)
         return
 
-    if ospf_packet1["state"]=="Init":
+    if parts["state"]=="Init":
         print("--> init")
-        ospf_header_ = ospf_header(ospf_packet1,1)
-        ospf_packet2 = ospf_hello(ospf_header_,ospf_packet1)   
+
+        ospf_header_ = ospf_header(parts,1)
+        ospf_packet2 = ospf_hello(ospf_header_,parts)   
         framesize = 20+ len(ospf_packet2) 			#IP header size is hard coded
         #print("Frame size ",framesize)
-        #print("State:",ospf_packet1["state"])
-        ospf_packet1["dest_ip"]=="224.0.0.5"
+        #print("State:",parts["state"])
+        parts["dest_ip"]=="224.0.0.5"
         dstmac = "01:00:5E:00:00:05"
         srcmac = "7c:c2:c6:45:3d:1f"
-        ip_header_=ip_header( ospf_packet1["source_ip"], ospf_packet1["dest_ip"], ip_proto, framesize )
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
         eth_type = b'\x08\x00'
         frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
         conn2.sendall(frame)
         return
 
-    if ospf_packet1["state"]=="2-way":
+    if parts["state"]=="12-way":
         print("--> 2-way")
-        ospf_header_ = ospf_header(ospf_packet1,1)
-        ospf_packet2 = ospf_hello(ospf_header_,ospf_packet1)   
+        ospf_header_ = ospf_header(parts,1)
+        ospf_packet2 = ospf_hello(ospf_header_,parts)   
         framesize = 20 + len(ospf_packet2) 			#IP header size is hard coded
         #print("Frame size ",framesize)
-        #print("State:",ospf_packet1["state"])
+        #print("State:",parts["state"])
         framesize = 20 + len(ospf_packet2)
-        ospf_packet1["dest_ip"]=="224.0.0.5"
+        parts["dest_ip"]=="224.0.0.5"
         dstmac = "01:00:5E:00:00:05"
         srcmac = "7c:c2:c6:45:3d:1f"
-        ip_header_=ip_header( ospf_packet1["source_ip"], ospf_packet1["dest_ip"], ip_proto, framesize )
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
         eth_type = b'\x08\x00'
         frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
         #print("Frame sent length:",len(frame)-14,"neig",)
@@ -188,18 +227,23 @@ def decode(pkt):
             #ospf_packet1["desinated_router"]=id2str(ip_header["SRC"])
             classify(ospf_packet1)
         if int(header["TYPE"])==2 and int(header["LEN"])==32: #DB without LSAs
+            print("***** DB  ******")
             ospf_packet1["Router_ID"]=id2str(header["RID"])
             ospf_packet1["type"]=int(header["TYPE"])
             ospf_packet1["neighbor"]=""
+            options=struct.unpack("> B",(pkt[47:48]))
+            ospf_packet1["peer_options"]=int(options[0])
             psq=struct.unpack("> L",(pkt[48:52]))
             ospf_packet1["peer_sequence_number"]=int((psq[0]))
             classify(ospf_packet1)
         
         if int(header["TYPE"])==2 and int(header["LEN"])>32: #DB with LSAs
-            print("***************")
+            print("*****LSA summary *******")
             ospf_packet1["Router_ID"]=id2str(header["RID"])
             ospf_packet1["type"]=int(header["TYPE"])
             ospf_packet1["neighbor"]=""
+            options=struct.unpack("> B",(pkt[47:48]))
+            ospf_packet1["peer_options"]=int(options[0])
             psq=struct.unpack("> L",(pkt[48:52]))
             ospf_packet1["peer_sequence_number"]=int((psq[0]))
             #for k in range(int(header["LEN"])-32):
@@ -243,9 +287,17 @@ def classify(ospf_packet1):
         print("Own RID in neighbor?")
         if ospf_packet1["neighbor"]==parts["own_router_id"]:
             print(" Yes")
-            parts["state"]="2-way"
-            send_hello(parts)
-            return 
+            if parts["state"]=="":
+                send_hello(parts)
+                parts["state"]="Init"
+                return 
+            if parts["state"]=="Init":
+                send_hello(parts)
+                parts["state"]="2-way"
+                return 
+            if parts["state"]=="2-way":
+                send_dd(parts)
+                return 
         else:
             print(" No")
             parts["state"]="Init"
@@ -254,8 +306,9 @@ def classify(ospf_packet1):
     print("Is DBD?"," state= ",parts["state"])
     if ospf_packet1["type"]== 2:
         print(" Yes.")
-        send_dd(parts)
         parts["peer_sequence_number"]=ospf_packet1["peer_sequence_number"]          
+        send_dd(parts)
+        
         
         
 

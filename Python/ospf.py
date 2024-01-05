@@ -84,7 +84,7 @@ def ospf_dd(ospf_header,ospf_packet1)-> bytes:
     ospf_options = 2
     ospf_flags   = 7 & ospf_packet1["master"]
     ospf_lsa_header =[]
-    ospf_sequence_number =ospf_packet1["own_sequence_number"]
+    ospf_sequence_number =ospf_packet1["peer_sequence_number"]
     ospf_dd = pack('!HBBL' , ospf_interface_MTU, ospf_options, ospf_flags, ospf_sequence_number)
     #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
     
@@ -108,10 +108,35 @@ def ospf_lsack(ospf_header,ospf_packet1)-> bytes:
     ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
     return ospf_frame2
 
+def ospf_lsreq(ospf_header,ospf_packet1)-> bytes:
+    for i in ospf_packet1["LSA_headers"]:
+        print("headers: ",i)
+        LS_type         = i["LS_type"]
+        Link_state_id   = i["Link_state_id"]
+        Adv_router      = i["Adv_router"]
+        print(LS_type,socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router))
+        ospf_lsreq = pack('! L4s4s' , LS_type, socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router)) 
+    #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
+    
+    ospf_frame = ospf_header + ospf_lsreq
+    packet_lenght = len(ospf_frame)
+    ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
+    ospf_checksum = checksum(ospf_frame)
+    ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
+    return ospf_frame2
+
+
 def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
     
     OSPF_LSAHDR     = "! HBB L L L HH"
     OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
+    lsa_header={"LS_age":0,
+                 "LS_type": 0,
+                 "Link_state_id": "0.0.0.0",
+                 "Adv_router": "0.0.0.0",
+                 "LS_sequence": 0,
+                 "Length":0, 
+                }
     
     i=0
     while  (i < (int(len))-32):     
@@ -125,7 +150,16 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
         Length1=copy.copy(swap_bytes(Length))
         print("Length: ",Length,"\n\n")
         i=i+20
-        print("Next i:",i)
+        lsa_header["LS_age"]=           LS_age
+        lsa_header["LS_type"]=          LS_type
+        lsa_header["Link_state_id"]=    id2str(Link_state_id)
+        lsa_header["Adv_router"]=       id2str(Advertising_router)
+        lsa_header["LS_sequence"]=      int2hex(LS_sequence_number)
+        lsa_header["Length"]=           Length1
+
+    ospf_packet1["LSA_headers"].append(copy.copy(lsa_header))
+        
+    return     
     
 
 
