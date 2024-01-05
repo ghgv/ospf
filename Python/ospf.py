@@ -4,6 +4,9 @@ import socket
 import struct
 from struct import *
 from tcb import *
+from mutils import *
+
+
 
 
 def checksum(packet: bytes) -> int:
@@ -20,7 +23,7 @@ def ospf_header(ospf_packet1,type_=1)->bytes:
     opsf_ver       = 2
     ospf_type      = type_
     ospf_lenght    = 24
-    ospf_router_id = socket.inet_aton ( ospf_packet1["own_router_id"]) 
+    ospf_router_id = socket.inet_aton ( ospf_packet1["own_router_id"]) #make sure is the highest ID
     ospf_area_id   = socket.inet_aton ( ospf_packet1["area_id"] )
     ospf_checksum  = 0
     ospf_AuType    = 0
@@ -103,3 +106,27 @@ def ospf_lsack(ospf_header,ospf_packet1)-> bytes:
     ospf_checksum = checksum(ospf_frame)
     ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
     return ospf_frame2
+
+def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
+    
+    OSPF_LSAHDR     = "! HBB L L L HH"
+    OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
+    print("--->",len)
+    for i in range(len):
+        (LS_age, Options, LS_type, Link_state_id, Advertising_router, LS_sequence_number, LS_checksum, Length) = struct.unpack(OSPF_LSAHDR, lsa_pkt[i:i+5*4])
+        
+        print(i)
+        print("Length: ",Length)
+        print("LS age: ",LS_age)
+        print("LS type: ",LS_type)
+        print("Link state ID: ",id2str(Link_state_id))
+        print("Adv router: ",id2str(Advertising_router))
+        print("LS sequence: 0x",int2hex(LS_sequence_number))
+        print("LS checksum: 0x",int2hex(LS_checksum),"\n\n")
+        c=bytes(Length)
+        Length=struct.pack('<2b', *struct.unpack('>2b', c[2:4]))
+        i=i+int(bytes(Length))
+    
+
+
+

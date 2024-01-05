@@ -11,8 +11,7 @@ import traceback
 from tcb import *
 from mutils import *
 
-OSPF_LSAHDR     = "> HBB L L L HH"
-OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
+
 
 OSPF_LSA_ROUTER = "> HBB LLL HH BBH LL BBH "
 
@@ -196,14 +195,16 @@ def decode(pkt):
             ospf_packet1["peer_sequence_number"]=int((psq[0]))
             classify(ospf_packet1)
         
-        if int(header["TYPE"])==2 and int(header["LEN"])>32: #DB without LSAs
+        if int(header["TYPE"])==2 and int(header["LEN"])>32: #DB with LSAs
+            print("***************")
             ospf_packet1["Router_ID"]=id2str(header["RID"])
             ospf_packet1["type"]=int(header["TYPE"])
             ospf_packet1["neighbor"]=""
             psq=struct.unpack("> L",(pkt[48:52]))
             ospf_packet1["peer_sequence_number"]=int((psq[0]))
-            for k in range(int(header["LEN"])-32)
-
+            #for k in range(int(header["LEN"])-32):
+            #    ospf_packet1["LSA_headers"].append(pkt[])
+            decode_lsa_headers(ospf_packet1,pkt[52:],int(header["LEN"]))
             classify(ospf_packet1)
 
             
