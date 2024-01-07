@@ -116,7 +116,7 @@ def ospf_lsreq(ospf_header,ospf_packet1)-> bytes:
         Adv_router      = i["Adv_router"]
         print(LS_type,socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router))
         ospf_lsreq = pack('! L4s4s' , LS_type, socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router)) 
-    #ospf_dd = ospf_dd + socket.inet_aton (ospf_packet1["Router_ID"])
+    
     
     ospf_frame = ospf_header + ospf_lsreq
     packet_lenght = len(ospf_frame)
@@ -139,6 +139,8 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
                 }
     
     i=0
+    exist_record=False
+    k=0
     while  (i < (int(len))-32):     
         (LS_age, Options, LS_type, Link_state_id, Advertising_router, LS_sequence_number, LS_checksum, Length) = struct.unpack(OSPF_LSAHDR, lsa_pkt[i:i+5*4])
         print("LS age: ",LS_age)
@@ -157,7 +159,32 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
         lsa_header["LS_sequence"]=      int2hex(LS_sequence_number)
         lsa_header["Length"]=           Length1
 
-    ospf_packet1["LSA_headers"].append(copy.copy(lsa_header))
+        if ospf_packet1["LSA_headers"]==[]:
+            print("#################  Fist entry ##########################")
+            print("Lsa header: \n",lsa_header)
+            ospf_packet1["LSA_headers"].append(copy.copy(lsa_header))
+
+        for lsa_header2 in  ospf_packet1["LSA_headers"]:
+            print("Comparison:  ",k,":",lsa_header2["Link_state_id"],lsa_header["Link_state_id"])
+            print(lsa_header2["Adv_router"],lsa_header["Adv_router"])
+            print(lsa_header2["LS_type"],lsa_header["LS_type"])
+            k+=1
+            if (lsa_header2["Link_state_id"]==lsa_header["Link_state_id"]) and (lsa_header2["Adv_router"]==lsa_header["Adv_router"]) and (lsa_header2["LS_type"]==lsa_header["LS_type"]):
+                print("Exists")
+                exist_record =True
+                break
+            else:
+                exist_record = False                    
+        if exist_record == False:
+            # 👇️ this runs
+            print("#################  New entry ##########################")
+            #print("Link state old: ",lsa_header2["Link_state_id"], lsa_header["Link_state_id"])
+            #print(lsa_header2["Adv_router"],lsa_header["Adv_router"])
+            #print(lsa_header2["LS_type"],lsa_header["LS_type"])
+            ospf_packet1["LSA_headers"].append(copy.copy(lsa_header))
+            exist_record=False
+        k=0
+
         
     return     
     
