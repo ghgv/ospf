@@ -215,7 +215,6 @@ def decode(pkt):
             ospf_packet1["Router_ID"]=id2str(header["RID"])
             ospf_packet1["state"]="Init"
             ospf_packet1["neighbor"]=""
-            #ospf_packet1["desinated_router"]=id2str(ip_header["SRC"])
             ospf_packet1["type"]=int(header["TYPE"])
             classify(ospf_packet1)
         if int(header["TYPE"])==1 and int(header["LEN"])>44:
@@ -224,7 +223,6 @@ def decode(pkt):
             leng = int(header["LEN"])+20
             neig=struct.unpack("> L",(pkt[leng-4:leng]))
             ospf_packet1["neighbor"]= id2str(neig[0])
-            #ospf_packet1["desinated_router"]=id2str(ip_header["SRC"])
             classify(ospf_packet1)
         if int(header["TYPE"])==2 and int(header["LEN"])==32: #DB without LSAs
             print("***** DB  ******")
@@ -246,9 +244,15 @@ def decode(pkt):
             ospf_packet1["peer_options"]=int(options[0])
             psq=struct.unpack("> L",(pkt[48:52]))
             ospf_packet1["peer_sequence_number"]=int((psq[0]))
-            #for k in range(int(header["LEN"])-32):
-            #    ospf_packet1["LSA_headers"].append(pkt[])
             decode_lsa_headers(ospf_packet1,pkt[52:],int(header["LEN"]))
+            classify(ospf_packet1)
+
+        if int(header["TYPE"])==4 and int(header["LEN"])>32: #DB with LSAs
+            print("*****LS Update *******")
+            ospf_packet1["Router_ID"]=id2str(header["RID"])
+            ospf_packet1["type"]=int(header["TYPE"])
+            ospf_packet1["neighbor"]=""
+            decode_ls_update(ospf_packet1,pkt[44:],int(header["LEN"]))
             classify(ospf_packet1)
 
             

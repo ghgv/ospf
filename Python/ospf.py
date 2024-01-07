@@ -109,13 +109,14 @@ def ospf_lsack(ospf_header,ospf_packet1)-> bytes:
     return ospf_frame2
 
 def ospf_lsreq(ospf_header,ospf_packet1)-> bytes:
+    ospf_lsreq=bytes()
     for i in ospf_packet1["LSA_headers"]:
         print("headers: ",i)
         LS_type         = i["LS_type"]
         Link_state_id   = i["Link_state_id"]
         Adv_router      = i["Adv_router"]
         print(LS_type,socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router))
-        ospf_lsreq = pack('! L4s4s' , LS_type, socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router)) 
+        ospf_lsreq = pack('! L4s4s' , LS_type, socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router)) +ospf_lsreq
     
     
     ospf_frame = ospf_header + ospf_lsreq
@@ -188,6 +189,58 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
         
     return     
     
+def decode_ls_update(ospf_packet1,lsa_pkt,len):
+    OSPF_LSAHDR     = "! HBB L L L HH"
+    OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
+    OSPF_LSA_T1     = "! LL BBH "
+    OSPF_LSA_T2     = "! LLL"
+    Num_lsas=int.from_bytes(lsa_pkt[:4], "big")
+    print("Number of LSA:",Num_lsas)
+    i=4
+    while  (i < (int(len))-32):     
+        (LS_age, Options, LS_type, Link_state_id, Advertising_router, LS_sequence_number, LS_checksum, Length) = struct.unpack(OSPF_LSAHDR, lsa_pkt[i:i+OSPF_LSAHDR_LEN])
+        print("##### LSU  ####")
+        print(" LS age: ",LS_age)
+        print(" LS type: ",LS_type)
+        print(" Link state ID: ",id2str(Link_state_id))
+        print(" Adv router: ",id2str(Advertising_router))
+        print(" LS sequence: 0x",int2hex(LS_sequence_number))
+        print(" LS checksum: 0x",int2hex(LS_checksum))
+        Length1=copy.copy(swap_bytes(Length))
+        print(" Length: ",Length)
+        
+        if LS_type==1:
+            k=0
+            (Flags,Num_links1)=struct.unpack("! HH", lsa_pkt[i+16*k+OSPF_LSAHDR_LEN:i+16*k+4+OSPF_LSAHDR_LEN])
+            print(" Numero de links:",Num_links1)
+            
+            while (k < (int(Num_links1))):
+                
+                (Link_id,Link_data,Link_type,Number_of_tos,Metric) = struct.unpack(OSPF_LSA_T1, lsa_pkt[i+12*k+OSPF_LSAHDR_LEN+4:i+12*k+12+OSPF_LSAHDR_LEN+4])
+                print(" Link ID:",id2str(Link_id))
+                print(" Link_data:",id2str(Link_data))
+                print(" Metric:", id2str(Metric))
+                k+=1
+
+            i=i+Length
+
+        if LS_type==2:
+            k=0
+            (Netmask) = struct.unpack("! L", lsa_pkt[i+OSPF_LSAHDR_LEN:i+4+OSPF_LSAHDR_LEN])
+            print("Netmask:",id2str(Netmask[0]))
+            k+=4 #The size of the netmask!  
+            while (k < (int(Length)-20)):
+                (Attached_router) = struct.unpack("! L", lsa_pkt[i+k+OSPF_LSAHDR_LEN:i+k+4+OSPF_LSAHDR_LEN])
+                print("Attached Routers:",id2str(Attached_router[0]))
+                k+=4  
+            i=i+Length
+        if LS_type==0:
+            print("Error")
+            while True:
+                pass
+    
+
+
 
 
 
