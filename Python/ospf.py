@@ -227,7 +227,7 @@ def decode_ls_update(ospf_packet1,lsa_pkt,len):
             (Flags,Num_links1)=struct.unpack("! HH", lsa_pkt[i+16*k+OSPF_LSAHDR_LEN:i+16*k+4+OSPF_LSAHDR_LEN])
             print(" Numero de links:",Num_links1)
             ######################
-            f.write('   "peer": [' )
+            f.write('    "peer": [' )
             ######################
             while (k < (int(Num_links1))):
                 
@@ -237,10 +237,10 @@ def decode_ls_update(ospf_packet1,lsa_pkt,len):
                 print(" Metric:", id2str(Metric))
 
                 ################################################
-                f.write('\n     {"Link ID"  : "%s",' % (id2str(Link_id)))
-                f.write('        "Link_type": "%s",' % (id2str(Link_type)))
-                f.write('        "Link_data": "%s",' % (id2str(Link_data)))
-                f.write('        "Metric:"  :  %s},' % ((Metric)))
+                f.write('\n         {"Link ID"  : "%s",' % (id2str(Link_id)))
+                f.write('           "Link_type": "%d",' % ((Link_type)))
+                f.write('           "Link_data": "%s",' % (id2str(Link_data)))
+                f.write('           "Metric:"  :  %s},' % ((Metric)))
                 ################################################
                 k+=1
 
