@@ -127,15 +127,43 @@ def ospf_lsreq(ospf_header,ospf_packet1)-> bytes:
     return ospf_frame2
 
 
+def ospf_lsack(ospf_header,ospf_packet1)-> bytes:
+    ospf_lsack=bytes()
+    for i in ospf_packet1["LSA_headers"]:
+        print("headers: ",i)
+        LS_age             = i["LS_age"]
+        LS_options         = i["Options"]
+        LS_type            = i["LS_type"]
+        Link_state_id      = i["Link_state_id"]
+        Adv_router         = i["Adv_router"]
+        LS_sequence_number = i["LS_sequence_number"]
+        LS_checksum        = i["LS_checksum"]
+        Length             = i["Length"] 
+        print(LS_type,socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router))
+        print(type(LS_sequence_number),type(Length),type(LS_checksum))
+        print(type(LS_options))
+        ospf_lsack = pack('! HBB  4s4sL  HH' , LS_age,LS_options,LS_type, socket.inet_aton(Link_state_id),socket.inet_aton(Adv_router),LS_sequence_number,LS_checksum,int(Length)) +ospf_lsack
+    
+    
+    ospf_frame = ospf_header + ospf_lsack
+    packet_lenght = len(ospf_frame)
+    print("packet_lenght in ack:",packet_lenght)
+    ospf_frame = ospf_frame[:2]+ pack('!H',packet_lenght)+ ospf_frame[4:]
+    ospf_checksum = checksum(ospf_frame)
+    ospf_frame2 = ospf_frame[:12]+ pack('H',ospf_checksum)+ ospf_frame[14:]
+    return ospf_frame2
+
 def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
     
     OSPF_LSAHDR     = "! HBB L L L HH"
     OSPF_LSAHDR_LEN = struct.calcsize(OSPF_LSAHDR)
-    lsa_header={"LS_age":0,
+    lsa_header={ "LS_age":0,
+                 "Options":0,
                  "LS_type": 0,
                  "Link_state_id": "0.0.0.0",
                  "Adv_router": "0.0.0.0",
-                 "LS_sequence": 0,
+                 "LS_sequence_number": 0,
+                 "LS_checksum":0,
                  "Length":0, 
                 }
     
@@ -145,6 +173,7 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
     while  (i < (int(len))-32):     
         (LS_age, Options, LS_type, Link_state_id, Advertising_router, LS_sequence_number, LS_checksum, Length) = struct.unpack(OSPF_LSAHDR, lsa_pkt[i:i+5*4])
         print("LS age: ",LS_age)
+        print("Options:",Options)
         print("LS type: ",LS_type)
         print("Link state ID: ",id2str(Link_state_id))
         print("Adv router: ",id2str(Advertising_router))
@@ -153,12 +182,14 @@ def decode_lsa_headers(ospf_packet1,lsa_pkt,len):
         Length1=copy.copy(swap_bytes(Length))
         print("Length: ",Length,"\n\n")
         i=i+20
-        lsa_header["LS_age"]=           LS_age
-        lsa_header["LS_type"]=          LS_type
-        lsa_header["Link_state_id"]=    id2str(Link_state_id)
-        lsa_header["Adv_router"]=       id2str(Advertising_router)
-        lsa_header["LS_sequence"]=      int2hex(LS_sequence_number)
-        lsa_header["Length"]=           Length1
+        lsa_header["LS_age"]=             LS_age
+        lsa_header["Options"]=            Options
+        lsa_header["LS_type"]=            LS_type
+        lsa_header["Link_state_id"]=      id2str(Link_state_id)
+        lsa_header["Adv_router"]=         id2str(Advertising_router)
+        lsa_header["LS_sequence_number"]= LS_sequence_number
+        lsa_header["LS_checksum"]=        LS_checksum
+        lsa_header["Length"]=             Length
 
         if ospf_packet1["LSA_headers"]==[]:
             print("#################  Fist entry ##########################")

@@ -91,11 +91,13 @@ def send_dd(parts):
         out=conn2.send(frame) 
         return
 
-    if parts["state"]=="Exstart" and parts["peer_options"]==2:
+    if parts["state"]=="Exstart" and parts["peer_options"]==2 and parts["type"]==2:
         print("     Exstart M set") #Not the last one
         ospf_sequence_number =ospf_packet1["own_sequence_number"]
-        ospf_header_ = ospf_header(parts,2) #type 2 packet
-        ospf_packet2 = ospf_dd(ospf_header_,parts)
+        #ospf_header_ = ospf_header(parts,2) #type 2 packet
+        #ospf_packet2 = ospf_dd(ospf_header_,parts)
+        ospf_header_ = ospf_header(parts,3) #type 3. Request packet
+        ospf_packet2 = ospf_lsreq(ospf_header_,parts)
         framesize = 20 + len(ospf_packet2)
         parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
         dstmac = "00:0f:e2:dd:9e:2c"
@@ -105,12 +107,31 @@ def send_dd(parts):
         frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
         parts["state"]="Exchange"
         conn2.send(frame) 
+
+        ospf_packet1["own_sequence_number"]+=1
+        parts["master"]=1
+        ospf_header_ = ospf_header(parts,2) #type 2 packet
+        ospf_packet2 = ospf_dd(ospf_header_,parts)
+        #ospf_header_ = ospf_header(parts,3) #type 3. Request packet
+        #ospf_packet2 = ospf_lsreq(ospf_header_,parts)
+        framesize = 20 + len(ospf_packet2)
+        parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
+        dstmac = "00:0f:e2:dd:9e:2c"
+        srcmac = "7c:c2:c6:45:3d:1f"
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
+        eth_type = b'\x08\x00'
+        frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
+        parts["state"]="Exchange"
+        conn2.send(frame) 
+
+
+
         return
 
-    if parts["state"]=="Exchange" and parts["peer_options"]==2:
+    if parts["state"]=="Exchange" and parts["peer_options"]==2 and parts["type"]==2:
         print("     Exstart M set") #Not the last one
         ospf_sequence_number =ospf_packet1["own_sequence_number"]
-        ospf_header_ = ospf_header(parts,3) #type 2 packet
+        ospf_header_ = ospf_header(parts,3) #type 3. Request packet
         ospf_packet2 = ospf_lsreq(ospf_header_,parts)
         framesize = 20 + len(ospf_packet2)
         parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
@@ -123,6 +144,21 @@ def send_dd(parts):
         conn2.send(frame) 
         return
 
+    if parts["state"]=="Exchange" and parts["type"]==4:
+        print("     Exstart M set and acked replied") #Not the last one
+        ospf_sequence_number =ospf_packet1["own_sequence_number"]
+        ospf_header_ = ospf_header(parts,5) #type 5. Ack
+        ospf_packet2 = ospf_lsack(ospf_header_,parts)
+        framesize = 20 + len(ospf_packet2)
+        parts["dest_ip"]="192.168.0.3"  #parts["neighbor"] #ojo aqui con este cambio!
+        dstmac = "00:0f:e2:dd:9e:2c"
+        srcmac = "7c:c2:c6:45:3d:1f"
+        ip_header_=ip_header( parts["source_ip"], parts["dest_ip"], ip_proto, framesize )
+        eth_type = b'\x08\x00'
+        frame = human_mac_to_bytes(dstmac) + human_mac_to_bytes(srcmac) + eth_type + ip_header_ + ospf_packet2
+        parts["state"]="Exchange"
+        conn2.send(frame) 
+        return
     
 
 
@@ -310,6 +346,10 @@ def classify(ospf_packet1):
     print("Is DBD?"," state= ",parts["state"])
     if ospf_packet1["type"]== 2:
         print(" Yes.")
+        parts["peer_sequence_number"]=ospf_packet1["peer_sequence_number"]          
+        send_dd(parts)
+    if ospf_packet1["type"]== 4:
+        print(" Yes. Update received")
         parts["peer_sequence_number"]=ospf_packet1["peer_sequence_number"]          
         send_dd(parts)
         
